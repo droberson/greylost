@@ -1,0 +1,24 @@
+Greylost TODO
+
+* DONE get basic PoC working
+  CLOSED: [2019-11-24 Sun 19:51]
+* DONE timestamps
+  CLOSED: [2019-11-26 Tue 08:04]
+* TODO logging
+* TODO daemonize
+* TODO HUP signal reopens log files.
+* TODO argparse for interface, promisc, etc
+* TODO discover interface or default to "any"
+* TODO finish IPv6 in pypacket
+* TODO baseline timer
+don't alert on new queries before N time passes. This allows the
+software to baseline DNS queries and not give alerts.
+* TODO ability to save/reload filter (for reboots/restarts)
+* TODO Splunk/ELK
+* TODO detect volume abnormalities
+* TODO investigate pypacket alternatives
+* TODO offline mode?
+This might not work great; dont know if pcaps keep timestamps in a
+manner that I can utilize.
+
+https://www.elvidence.com.au/understanding-time-stamps-in-packet-capture-data-pcap-files/
