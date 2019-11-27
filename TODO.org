@@ -4,9 +4,19 @@ Greylost TODO
   CLOSED: [2019-11-24 Sun 19:51]
 * DONE timestamps
   CLOSED: [2019-11-26 Tue 08:04]
+* DONE sort responses before adding to bloom filter
+  CLOSED: [2019-11-26 Tue 15:26]
+queries with multiple responses arent guaranteed to be in the same
+order each time they are queried. These should be sorted prior to
+adding to the bloom filter so that they arent counted dozens of times
+due to being out of order
 * TODO logging
-* TODO daemonize
 * TODO HUP signal reopens log files.
+* TODO daemonize
+* TODO ignore list for bloom filter
+mcafee is making a ton of random resolutions. we know that this
+particular case is benign, so add some feature to ignore these
+queries.
 * TODO argparse for interface, promisc, etc
 * TODO discover interface or default to "any"
 * TODO finish IPv6 in pypacket
