@@ -1,0 +1,3 @@
+dnslib==0.9.10
+dmfrbloom==0.0.6
+pcapy==0.11.4
