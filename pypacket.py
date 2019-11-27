@@ -1,6 +1,9 @@
+""" pypacket - make wire-formatted packets usable to humans """
+
 import socket
 from struct import unpack
 
+# pylint: disable=R0915
 class Packet():
     """Packet class - Parses an Ethernet frame so you dont have to!@#"""
     # pylint: disable=too-many-instance-attributes
@@ -20,7 +23,7 @@ class Packet():
         self.ack = None          # Acknowledgement number
         self.window = None       # TCP window
         self.tcpflags = None     # TCP flags
-        self.tcnheaderlen = None # TCP header length
+        self.tcpheaderlen = None # TCP header length
         self.len = None          # Length
         self.checksum = None     # Checksum
         self.icmptype = None     # ICMP type
@@ -79,11 +82,15 @@ class Packet():
         self.protocol = "ARP"
 
     def parse_ospf_header(self):
-        # TODO finish this
+        """Packet.parse_ospf_header() - Parse OSPF packets.
+        TODO finish this
+        """
         self.protocol = "OSPF"
 
     def parse_pim_header(self):
-        # TODO finish this
+        """Packet.parse_pim_header() - Parse PIM packets.
+        TODO finish this
+        """
         self.protocol = "PIM"
 
     def parse_ipv6_header(self):
