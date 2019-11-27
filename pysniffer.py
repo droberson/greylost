@@ -17,6 +17,7 @@ class Sniffer():
         timeout (int)      - timeout.
         sniffer            - fd used by libpcap.
     """
+    # pylint: disable=R0913
     def __init__(self, interface, promisc=1, bpf="", snaplen=65535, timeout=100):
         self.interface = interface
         self.promisc = promisc
