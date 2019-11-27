@@ -6,7 +6,7 @@
 import json
 import copy
 from base64 import b64encode
-from time import sleep
+from time import sleep, time
 from datetime import datetime
 
 import dnslib
@@ -97,6 +97,11 @@ def _stdout_packet_json(packet_dict):
     return True
 
 
+def _stdout_greylist_miss(packet_dict):
+    print("Not in filter:", json.dumps(packet_dict, indent=4))
+    return True
+
+
 def _timefilter_packet(packet_dict):
     # Replies are sorted rather than logged in the order in which
     # they were received because they aren't guaranteed to be in
@@ -120,11 +125,13 @@ def _timefilter_packet(packet_dict):
 
     element = json.dumps(element_dict)
 
-    if timefilter.lookup(element) is False:
-        # TODO alert only if time baseline is complete
-        # TODO greylist_miss_methods; for each method, do something with
-        #      element_dict
-        print("Not in filter:", json.dumps(element_dict, indent=4))
+    elapsed = time() - Settings.get("starttime")
+    learning = False if elapsed > Settings.get("filter_learning_time") else True
+
+    if timefilter.lookup(element) is False and not learning:
+        for method in Settings.get("greylist_miss_methods"):
+            method(element_dict)
+        #print("Not in filter:", json.dumps(element_dict, indent=4))
     timefilter.add(element)
     del element_dict
 
@@ -134,15 +141,20 @@ def _timefilter_packet(packet_dict):
 class Settings():
     """ Settings - Application settings object. """
     __config = {
+        "starttime": None,
         "timefilter": None,
         "interface": "eth0",
         "bpf": "port 53 or port 5353",
         "filter_size": 10000000,
         "filter_precision": 0.001,
         "filter_time": 60*60*24,
+        "filter_learning_time": 60, # set to zero if you dont want to learn
         "packet_methods": [
             _stdout_packet_json,
             _timefilter_packet,
+        ],
+        "greylist_miss_methods": [
+            _stdout_greylist_miss,
         ],
     }
 
@@ -182,6 +194,7 @@ class Settings():
 
 def main():
     """ main() - Entry point. """
+    Settings.set("starttime", time())
     Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
                                           Settings.get("filter_precision"),
                                           Settings.get("filter_time")))
@@ -198,7 +211,6 @@ def main():
             continue
 
         output = _parse_dns_packet(packet)
-
         for method in Settings.get("packet_methods"):
             method(output)
 
