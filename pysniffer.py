@@ -42,6 +42,7 @@ class Sniffer():
         self.sniffer.setfilter(self.bpf)
 
     def next(self):
+        # TODO catch exception if interface goes down and exit gracefully
         """ Sniffer.next() - Get next packet from sniffer.
 
         Args:
