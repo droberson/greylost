@@ -1,5 +1,10 @@
 # Greylost
-DNS SNIFFING MONKEYSHINES
+
+This sniffs DNS traffic and logs queries. It implements a time-based
+filter to narrow the scope of DNS logs for analysts to examine; if
+traffic to Google is typical for your environment, you won't be
+innundated with these query logs, but WILL get logs for
+malwaredomain123.xyz if that is an atypical query.
 
 ## Installation
 ```
@@ -36,6 +41,3 @@ Example:
 ```
 ./greylost.py -i eth0 --stdout --logging
 ```
-
-You might have to edit which interface this is sniffing on. I haven't
-added CLI handling to specify stuff like this yet... >:|
