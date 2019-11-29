@@ -19,18 +19,20 @@ software to baseline DNS queries and not give alerts.
 
 * DONE logging
   CLOSED: [2019-11-28 Thu 19:54]
-* TODO HUP signal reopens log files.
-* TODO daemonize
+* DONE HUP signal reopens log files.
+  CLOSED: [2019-11-28 Thu 22:03]
+* DONE daemonize
+  CLOSED: [2019-11-29 Fri 09:31]
 * TODO ignore list for bloom filter
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
 queries.
 * TODO add malicious domains to blocklist when using w/ dnsmasq
+* TODO investigate pypacket alternatives
 * TODO finish IPv6 in pypacket
 * TODO ability to save/reload filter (for reboots/restarts)
 * TODO Splunk/ELK
 * TODO detect volume abnormalities
-* TODO investigate pypacket alternatives
 * TODO offline mode?
 This might not work great; dont know if pcaps keep timestamps in a
 manner that I can utilize.
