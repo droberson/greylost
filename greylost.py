@@ -60,8 +60,6 @@ def _parse_dns_packet(packet):
     try:
         dns_packet = dnslib.DNSRecord.parse(packet.data)
     except (dnslib.dns.DNSError, TypeError):
-        # TODO this is probably not DNS data. should be an alert!
-        # TODO do another loop of methods; non dns protocol usage
         if packet.data:
             output["payload"] = b64encode(packet.data).decode("utf-8")
         return output
@@ -241,6 +239,12 @@ def parse_cli():
         type=int,
         help="Filter time")
 
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        default=False,
+        action="store_true")
+
     args = parser.parse_args()
 
     Settings.set("bpf", args.bpf)
@@ -249,6 +253,7 @@ def parse_cli():
     Settings.set("filter_precision", args.precision)
     Settings.set("filter_time", args.filtertime)
     Settings.set("filter_learning_time", args.learningtime)
+    Settings.set("verbose", args.verbose)
 
     if args.stdout:
         packet_methods = Settings.get("packet_methods")
@@ -315,7 +320,9 @@ def open_log_file(path):
 
 def startup_blurb():
     """startup_blurb() - show settings and other junk"""
-    print("[+]  Sniffing on: %s" % Settings.get("interface"))
+    if not Settings.get("verbose"):
+        return
+    print("       interface: %s" % Settings.get("interface"))
     print("             bpf: %s" % Settings.get("bpf"))
     print("     filter size: %s" % Settings.get("filter_size"))
     print("     filter time: %s" % Settings.get("filter_time"))
@@ -346,6 +353,35 @@ def startup_blurb():
             if count < methods:
                 sys.stdout.write("                  ")
 
+    count = 0
+    methods = len(Settings.get("not_dns_methods"))
+    if Settings.get("not_dns_methods"):
+        sys.stdout.write(" not dns methods: ")
+        for method in Settings.get("not_dns_methods"):
+            count += 1
+            print(method)
+            if count < methods:
+                sys.stdout.write("                  ")
+
+
+def open_log_files():
+    """open_log_files() - Open up log files and store fds in Settings()"""
+    if not Settings.get("logging"):
+        return
+    if Settings.get("all_log"):
+        all_log_fd = open_log_file(Settings.get("all_log"))
+        if all_log_fd:
+            Settings.set("all_log_fd", all_log_fd)
+        else:
+            print("something went wrong opening all_log")
+    if Settings.get("greylist_miss_log"):
+        greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
+        if greylist_miss_fd:
+            Settings.set("greylist_miss_log_fd", greylist_miss_fd)
+        else:
+            print("something went wrong opening greylist_miss_log")
+
+
 class Settings():
     """ Settings - Application settings object. """
     __config = {
@@ -359,11 +395,13 @@ class Settings():
         "filter_time": 60*60*24, # 1 day
         "filter_learning_time": 0, # set to zero if you dont want to learn
         "packet_methods": [_timefilter_packet],
+        "not_dns_methods": [],
         "greylist_miss_methods": [],
         "greylist_miss_log": "greylost-misses.log",
         "greylist_miss_log_fd": None,
         "all_log": "greylost-all.log",
         "all_log_fd": None,
+        "verbose": False,
     }
 
     @staticmethod
@@ -404,30 +442,16 @@ def main():
     """ main() - Entry point. """
     parse_cli()
 
+    # Signal handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
 
+    # Random start of program stuff
     Settings.set("starttime", time())
     Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
                                           Settings.get("filter_precision"),
                                           Settings.get("filter_time")))
-
-    # TODO make this output toggleable
     startup_blurb()
-
-    # Set up logfiles
-    if Settings.get("logging"):
-        if Settings.get("all_log"):
-            all_log_fd = open_log_file(Settings.get("all_log"))
-            if all_log_fd:
-                Settings.set("all_log_fd", all_log_fd)
-            else:
-                print("something went wrong opening all_log")
-        if Settings.get("greylist_miss_log"):
-            greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
-            if greylist_miss_fd:
-                Settings.set("greylist_miss_log_fd", greylist_miss_fd)
-            else:
-                print("something went wrong opening greylist_miss_log")
+    open_log_files()
 
     # Start sniffer
     capture = Sniffer(Settings.get("interface"), bpf=Settings.get("bpf"))
@@ -442,6 +466,16 @@ def main():
             continue
 
         output = _parse_dns_packet(packet)
+
+        # Do stuff to non-DNS packets
+        try:
+            if output["payload"]:
+                for method in Settings.get("not_dns_methods"):
+                    method(output)
+        except KeyError:
+            pass
+
+        # Do stuff to packets
         for method in Settings.get("packet_methods"):
             method(output)
 
