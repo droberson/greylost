@@ -309,7 +309,6 @@ def open_log_file(path):
         log_fd = open(path, "a")
     except PermissionError:
         return None
-    log_fd.write("lol")
     log_fd.flush()
     return log_fd
 
