@@ -3,8 +3,11 @@
 """ greylost - DNS threat hunting
 """
 
+import sys
 import json
 import copy
+import argparse
+import signal
 from base64 import b64encode
 from time import sleep, time
 from datetime import datetime
@@ -58,6 +61,7 @@ def _parse_dns_packet(packet):
         dns_packet = dnslib.DNSRecord.parse(packet.data)
     except (dnslib.dns.DNSError, TypeError):
         # TODO this is probably not DNS data. should be an alert!
+        # TODO do another loop of methods; non dns protocol usage
         if packet.data:
             output["payload"] = b64encode(packet.data).decode("utf-8")
         return output
@@ -110,10 +114,10 @@ def _timefilter_packet(packet_dict):
     # elements.  Sorting will avoid duplicate elements in the
     # bloom filter when they are logically the same, thus,
     # reducing the required size of the filter.
-    # Remove volatile fields before adding to bloom filter
 
     timefilter = Settings.get("timefilter")
 
+    # Remove volatile fields before adding to bloom filter
     element_dict = copy.copy(packet_dict)
     element_dict.pop("timestamp")
     element_dict.pop("sport")
@@ -124,38 +128,209 @@ def _timefilter_packet(packet_dict):
         return False
 
     element = json.dumps(element_dict)
-
     elapsed = time() - Settings.get("starttime")
-    learning = False if elapsed > Settings.get("filter_learning_time") else True
+    learning = not elapsed > Settings.get("filter_learning_time")
 
     if timefilter.lookup(element) is False and not learning:
         for method in Settings.get("greylist_miss_methods"):
             method(element_dict)
-        #print("Not in filter:", json.dumps(element_dict, indent=4))
     timefilter.add(element)
     del element_dict
 
     return True
 
 
+def _all_log(packet_dict):
+    """_all_log() - log a DNS packet
+
+    Args:
+        packet_dict (dict) - dict derived from _parse_dns_packet()
+
+    Returns:
+        True if successful, False if unsuccessful
+    """
+
+    log_fd = Settings.get("all_log_fd")
+    if log_fd:
+        log_fd.write(json.dumps(packet_dict) + "\n")
+        log_fd.flush()
+        return True
+    return False
+
+
+def _greylist_miss_log(packet_dict):
+    """_greylist_miss_log() - log a greylist miss
+
+    Args:
+        packet_dict (dict) - dict derived from _parse_dns_packet()
+
+    Returns:
+        True if successful, False if unsuccessful
+    """
+    log_fd = Settings.get("greylist_miss_log_fd")
+    if log_fd:
+        log_fd.write(json.dumps(packet_dict) + "\n")
+        log_fd.flush()
+        return True
+    return False
+
+
+def parse_cli():
+    """parse_cli() -- parse CLI arguments
+
+    Args:
+        None
+
+    Returns:
+        Nothing
+    """
+    description = "greylost by @dmfroberson"
+    parser = argparse.ArgumentParser(description=description)
+
+    parser.add_argument(
+        "-b",
+        "--bpf",
+        type=str,
+        default="port 53 or port 5353",
+        help="BPF filter to apply to the sniffer")
+
+    parser.add_argument(
+        "--learningtime",
+        default=0,
+        type=int,
+        help="Time to baseline queries before alerting on greylist misses")
+
+    parser.add_argument(
+        "--logging",
+        default=False,
+        action="store_true",
+        help="Toggle logging")
+
+    parser.add_argument(
+        "-i",
+        "--interface",
+        default="eth0",
+        help="Interface to sniff")
+
+    parser.add_argument(
+        "-o",
+        "--stdout",
+        action="store_true",
+        default=False,
+        help="Toggle stdout output")
+
+    parser.add_argument(
+        "-p",
+        "--precision",
+        default=0.001,
+        type=int,
+        help="Precision of bloom filter. Ex: 0.001")
+
+    parser.add_argument(
+        "-s",
+        "--filtersize",
+        default=10000000,
+        type=int,
+        help="Size of bloom filter")
+
+    parser.add_argument(
+        "-t",
+        "--filtertime",
+        default=60*60*24,
+        type=int,
+        help="Filter time")
+
+    args = parser.parse_args()
+
+    Settings.set("bpf", args.bpf)
+    Settings.set("interface", args.interface)
+    Settings.set("filter_size", args.filtersize)
+    Settings.set("filter_precision", args.precision)
+    Settings.set("filter_time", args.filtertime)
+    Settings.set("filter_learning_time", args.learningtime)
+
+    if args.stdout:
+        packet_methods = Settings.get("packet_methods")
+        if _stdout_packet_json not in packet_methods:
+            packet_methods.append(_stdout_packet_json)
+            Settings.set("packet_methods", packet_methods)
+
+        greylist_miss_methods = Settings.get("greylist_miss_methods")
+        if _stdout_greylist_miss not in greylist_miss_methods:
+            greylist_miss_methods.append(_stdout_greylist_miss)
+            Settings.set("greylist_miss_methods", greylist_miss_methods)
+
+    if args.logging:
+        Settings.set("logging", not Settings.get("logging"))
+
+        packet_methods = Settings.get("packet_methods")
+        if _all_log not in packet_methods:
+            packet_methods.append(_all_log)
+            Settings.set("packet_methods", packet_methods)
+
+        greylist_miss_methods = Settings.get("greylist_miss_methods")
+        if _greylist_miss_log not in greylist_miss_methods:
+            greylist_miss_methods.append(_greylist_miss_log)
+            Settings.set("greylist_miss_methods", greylist_miss_methods)
+
+
+def sig_hup_handler(signo, frame): # pylint: disable=W0613
+    """sig_hup_handler() - Handle SIGHUP signals
+
+    Args:
+        signo (unused) - signal number
+        frame (unused) - frame
+
+    Returns:
+        Nothing
+    """
+    if Settings.get("logging"):
+        if Settings.get("all_log_fd"):
+            Settings.get("all_log_fd").close()
+            all_log_fd = open_log_file(Settings.get("all_log"))
+            Settings.set("all_log_fd", all_log_fd)
+        if Settings.get("greylist_miss_log_fd"):
+            Settings.get("greylist_miss_log_fd").close()
+            greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
+            Settings.set("greylist_miss_log_fd", greylist_miss_fd)
+
+
+def open_log_file(path):
+    """open_log_file() - open a log file and store its fd in Settings()
+
+    Args:
+        path (str) - Path to log file
+
+    Returns:
+        fd on success, None on failure
+    """
+    try:
+        log_fd = open(path, "a")
+    except PermissionError:
+        return None
+    log_fd.write("lol")
+    log_fd.flush()
+    return log_fd
+
+
 class Settings():
     """ Settings - Application settings object. """
     __config = {
         "starttime": None,
+        "logging": False,
         "timefilter": None,
-        "interface": "eth0",
-        "bpf": "port 53 or port 5353",
-        "filter_size": 10000000,
+        "interface": None,
+        "bpf": None,
+        "filter_size": None,
         "filter_precision": 0.001,
-        "filter_time": 60*60*24,
-        "filter_learning_time": 60, # set to zero if you dont want to learn
-        "packet_methods": [
-            _stdout_packet_json,
-            _timefilter_packet,
-        ],
-        "greylist_miss_methods": [
-            _stdout_greylist_miss,
-        ],
+        "filter_time": 60*60*24, # 1 day
+        "filter_learning_time": 0, # set to zero if you dont want to learn
+        "packet_methods": [_timefilter_packet],
+        "greylist_miss_methods": [],
+        "greylist_miss_log": "greylost-misses.log",
+        "greylist_miss_log_fd": None,
+        "all_log": "greylost-all.log",
+        "all_log_fd": None,
     }
 
     @staticmethod
@@ -194,11 +369,64 @@ class Settings():
 
 def main():
     """ main() - Entry point. """
+    parse_cli()
+
+    signal.signal(signal.SIGHUP, sig_hup_handler)
+
     Settings.set("starttime", time())
     Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
                                           Settings.get("filter_precision"),
                                           Settings.get("filter_time")))
 
+    # TODO make this output toggleable
+    print("[+]  Sniffing on: %s" % Settings.get("interface"))
+    print("             bpf: %s" % Settings.get("bpf"))
+    print("     filter size: %s" % Settings.get("filter_size"))
+    print("     filter time: %s" % Settings.get("filter_time"))
+    print("filter precision: %s" % Settings.get("filter_precision"))
+    print("   learning time: %s" % Settings.get("filter_learning_time"))
+    print("         logging: %s" % Settings.get("logging"))
+    if Settings.get("logging"):
+        print("        miss log: %s" % Settings.get("greylist_miss_log"))
+        print("         all log: %s" % Settings.get("all_log"))
+
+    # TODO make this a function to line up output
+    count = 0
+    methods = len(Settings.get("packet_methods"))
+    if Settings.get("packet_methods"):
+        sys.stdout.write("  packet methods: ")
+        for method in Settings.get("packet_methods"):
+            count += 1
+            print(method)
+            if count < methods:
+                sys.stdout.write("                  ")
+
+    count = 0
+    methods = len(Settings.get("greylist_miss_methods"))
+    if Settings.get("greylist_miss_methods"):
+        sys.stdout.write("    miss methods: ")
+        for method in Settings.get("greylist_miss_methods"):
+            count += 1
+            print(method)
+            if count < methods:
+                sys.stdout.write("                  ")
+
+    # Set up logfiles
+    if Settings.get("logging"):
+        if Settings.get("all_log"):
+            all_log_fd = open_log_file(Settings.get("all_log"))
+            if all_log_fd:
+                Settings.set("all_log_fd", all_log_fd)
+            else:
+                print("something went wrong opening all_log")
+        if Settings.get("greylist_miss_log"):
+            greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
+            if greylist_miss_fd:
+                Settings.set("greylist_miss_log_fd", greylist_miss_fd)
+            else:
+                print("something went wrong opening greylist_miss_log")
+
+    # Start sniffer
     capture = Sniffer(Settings.get("interface"), bpf=Settings.get("bpf"))
     capture.start()
     capture.setnonblock()
