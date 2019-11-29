@@ -3,6 +3,7 @@
 """ greylost - DNS threat hunting
 """
 
+import os
 import sys
 import json
 import copy
@@ -194,6 +195,13 @@ def parse_cli():
         help="BPF filter to apply to the sniffer")
 
     parser.add_argument(
+        "-d",
+        "--daemonize",
+        default=False,
+        action="store_true",
+        help="Daemonize")
+
+    parser.add_argument(
         "--learningtime",
         default=0,
         type=int,
@@ -226,6 +234,12 @@ def parse_cli():
         help="Precision of bloom filter. Ex: 0.001")
 
     parser.add_argument(
+        "-r",
+        "--pidfile",
+        default=None,
+        help="Path to PID file")
+
+    parser.add_argument(
         "-s",
         "--filtersize",
         default=10000000,
@@ -254,6 +268,7 @@ def parse_cli():
     Settings.set("filter_time", args.filtertime)
     Settings.set("filter_learning_time", args.learningtime)
     Settings.set("verbose", args.verbose)
+    Settings.set("daemonize", args.daemonize)
 
     if args.stdout:
         packet_methods = Settings.get("packet_methods")
@@ -278,6 +293,9 @@ def parse_cli():
         if _greylist_miss_log not in greylist_miss_methods:
             greylist_miss_methods.append(_greylist_miss_log)
             Settings.set("greylist_miss_methods", greylist_miss_methods)
+
+    if args.pidfile:
+        Settings.set("pid_file_path", args.pidfile)
 
 
 def sig_hup_handler(signo, frame): # pylint: disable=W0613
@@ -364,6 +382,23 @@ def startup_blurb():
                 sys.stdout.write("                  ")
 
 
+def write_pid_file(path):
+    """write_pid_file() - Write current PID to specified path
+
+    Args:
+        path (str) - path to PID file
+
+    Returns:
+        True if successful, False if unsuccessful
+    """
+    try:
+        with open(path, "w") as pidfile:
+            pidfile.write(str(os.getpid()))
+    except PermissionError:
+        return False
+    return True
+
+
 def open_log_files():
     """open_log_files() - Open up log files and store fds in Settings()"""
     if not Settings.get("logging"):
@@ -387,6 +422,7 @@ class Settings():
     __config = {
         "starttime": None,
         "logging": False,
+        "daemonize": False,
         "timefilter": None,
         "interface": None,
         "bpf": None,
@@ -402,6 +438,7 @@ class Settings():
         "all_log": "greylost-all.log",
         "all_log_fd": None,
         "verbose": False,
+        "pid_file_path": "greylost.pid",
     }
 
     @staticmethod
@@ -441,6 +478,16 @@ class Settings():
 def main():
     """ main() - Entry point. """
     parse_cli()
+
+    if Settings.get("daemonize"):
+        try:
+            pid = os.fork()
+            if pid > 0:
+                sys.exit(0)
+        except OSError as exc:
+            print("fork(): %s" % exc, file=sys.stderr)
+            sys.exit(1)
+        write_pid_file(Settings.get("pid_file_path"))
 
     # Signal handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
