@@ -14,15 +14,18 @@ due to being out of order
   CLOSED: [2019-11-27 Wed 14:49]
 don't alert on new queries before N time passes. This allows the
 software to baseline DNS queries and not give alerts.
-* TODO argparse for interface, promisc, etc
-* TODO logging
+* DONE argparse for interface, promisc, etc
+  CLOSED: [2019-11-28 Thu 15:28]
+
+* DONE logging
+  CLOSED: [2019-11-28 Thu 19:54]
 * TODO HUP signal reopens log files.
 * TODO daemonize
 * TODO ignore list for bloom filter
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
 queries.
-* TODO discover interface or default to "any"
+* TODO add malicious domains to blocklist when using w/ dnsmasq
 * TODO finish IPv6 in pypacket
 * TODO ability to save/reload filter (for reboots/restarts)
 * TODO Splunk/ELK
