@@ -313,6 +313,39 @@ def open_log_file(path):
     return log_fd
 
 
+def startup_blurb():
+    """startup_blurb() - show settings and other junk"""
+    print("[+]  Sniffing on: %s" % Settings.get("interface"))
+    print("             bpf: %s" % Settings.get("bpf"))
+    print("     filter size: %s" % Settings.get("filter_size"))
+    print("     filter time: %s" % Settings.get("filter_time"))
+    print("filter precision: %s" % Settings.get("filter_precision"))
+    print("   learning time: %s" % Settings.get("filter_learning_time"))
+    print("         logging: %s" % Settings.get("logging"))
+    if Settings.get("logging"):
+        print("        miss log: %s" % Settings.get("greylist_miss_log"))
+        print("         all log: %s" % Settings.get("all_log"))
+
+    count = 0
+    methods = len(Settings.get("packet_methods"))
+    if Settings.get("packet_methods"):
+        sys.stdout.write("  packet methods: ")
+        for method in Settings.get("packet_methods"):
+            count += 1
+            print(method)
+            if count < methods:
+                sys.stdout.write("                  ")
+
+    count = 0
+    methods = len(Settings.get("greylist_miss_methods"))
+    if Settings.get("greylist_miss_methods"):
+        sys.stdout.write("    miss methods: ")
+        for method in Settings.get("greylist_miss_methods"):
+            count += 1
+            print(method)
+            if count < methods:
+                sys.stdout.write("                  ")
+
 class Settings():
     """ Settings - Application settings object. """
     __config = {
@@ -379,37 +412,7 @@ def main():
                                           Settings.get("filter_time")))
 
     # TODO make this output toggleable
-    print("[+]  Sniffing on: %s" % Settings.get("interface"))
-    print("             bpf: %s" % Settings.get("bpf"))
-    print("     filter size: %s" % Settings.get("filter_size"))
-    print("     filter time: %s" % Settings.get("filter_time"))
-    print("filter precision: %s" % Settings.get("filter_precision"))
-    print("   learning time: %s" % Settings.get("filter_learning_time"))
-    print("         logging: %s" % Settings.get("logging"))
-    if Settings.get("logging"):
-        print("        miss log: %s" % Settings.get("greylist_miss_log"))
-        print("         all log: %s" % Settings.get("all_log"))
-
-    # TODO make this a function to line up output
-    count = 0
-    methods = len(Settings.get("packet_methods"))
-    if Settings.get("packet_methods"):
-        sys.stdout.write("  packet methods: ")
-        for method in Settings.get("packet_methods"):
-            count += 1
-            print(method)
-            if count < methods:
-                sys.stdout.write("                  ")
-
-    count = 0
-    methods = len(Settings.get("greylist_miss_methods"))
-    if Settings.get("greylist_miss_methods"):
-        sys.stdout.write("    miss methods: ")
-        for method in Settings.get("greylist_miss_methods"):
-            count += 1
-            print(method)
-            if count < methods:
-                sys.stdout.write("                  ")
+    startup_blurb()
 
     # Set up logfiles
     if Settings.get("logging"):
