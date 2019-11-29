@@ -187,6 +187,7 @@ def parse_cli():
     description = "greylost by @dmfroberson"
     parser = argparse.ArgumentParser(description=description)
 
+    # TODO set log file paths
     parser.add_argument(
         "-b",
         "--bpf",
