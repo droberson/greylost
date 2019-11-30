@@ -23,16 +23,32 @@ software to baseline DNS queries and not give alerts.
   CLOSED: [2019-11-28 Thu 22:03]
 * DONE daemonize
   CLOSED: [2019-11-29 Fri 09:31]
+* DONE finish IPv6 in pypacket
+  CLOSED: [2019-11-29 Fri 22:12]
+* DONE investigate pypacket alternatives
+  CLOSED: [2019-11-29 Fri 22:12]
+* TODO shared bloom filter when using multiple resolvers
+this will be another project, but has other potential use cases.
+
+example HTTP API:
+/add?filter=name_here&element=element_goes_here
+/lookup?filter=name_here&element=element_goes_here
+
+add a flag to use remote endpoint rather than local filter.
 * TODO ignore list for bloom filter
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
 queries.
 * TODO add malicious domains to blocklist when using w/ dnsmasq
-* TODO investigate pypacket alternatives
-* TODO finish IPv6 in pypacket
 * TODO ability to save/reload filter (for reboots/restarts)
 * TODO Splunk/ELK
-* TODO detect volume abnormalities
+Add examples of how to ingest this data. Don't really have to add any
+code for this...
+* TODO detect dns protocol abuses
+- weird TXT/NULL records
+- hex/baseN encoded stuff: aabbccddeeff.whatever.com
+- volume
+- not dns at all.. they are just sending data over port 53
 * TODO offline mode?
 This might not work great; dont know if pcaps keep timestamps in a
 manner that I can utilize.
