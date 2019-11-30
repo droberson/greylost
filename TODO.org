@@ -27,6 +27,10 @@ software to baseline DNS queries and not give alerts.
   CLOSED: [2019-11-29 Fri 22:12]
 * DONE investigate pypacket alternatives
   CLOSED: [2019-11-29 Fri 22:12]
+* TODO ignore list for bloom filter
+mcafee is making a ton of random resolutions. we know that this
+particular case is benign, so add some feature to ignore these
+queries.
 * TODO shared bloom filter when using multiple resolvers
 this will be another project, but has other potential use cases.
 
@@ -35,12 +39,11 @@ example HTTP API:
 /lookup?filter=name_here&element=element_goes_here
 
 add a flag to use remote endpoint rather than local filter.
-* TODO ignore list for bloom filter
-mcafee is making a ton of random resolutions. we know that this
-particular case is benign, so add some feature to ignore these
-queries.
 * TODO add malicious domains to blocklist when using w/ dnsmasq
 * TODO ability to save/reload filter (for reboots/restarts)
+* TODO Alerting for resolutions of known-bad domains
+Splunk/Discord webhook alerts if some booger eater tries to resolve
+http.kali.org
 * TODO Splunk/ELK
 Add examples of how to ingest this data. Don't really have to add any
 code for this...
