@@ -1,9 +1,7 @@
-""" pypacket - make wire-formatted packets usable to humans """
-
 import socket
-from struct import unpack
+import ipaddress
+from struct import pack, unpack
 
-# pylint: disable=R0915
 class Packet():
     """Packet class - Parses an Ethernet frame so you dont have to!@#"""
     # pylint: disable=too-many-instance-attributes
@@ -24,7 +22,7 @@ class Packet():
         self.window = None       # TCP window
         self.tcpflags = None     # TCP flags
         self.tcpheaderlen = None # TCP header length
-        self.len = None          # Length
+        self.length = None       # Length
         self.checksum = None     # Checksum
         self.icmptype = None     # ICMP type
         self.icmpcode = None     # ICMP code
@@ -33,7 +31,7 @@ class Packet():
         # Constants
         self.ethernet_header_length = 14
         self.ip_header_length = 20
-        self.ipv6_header_length = 16
+        self.ipv6_header_length = 40
         self.tcp_header_length = 20
         self.udp_header_length = 8
         self.icmp_header_length = 4
@@ -82,15 +80,11 @@ class Packet():
         self.protocol = "ARP"
 
     def parse_ospf_header(self):
-        """Packet.parse_ospf_header() - Parse OSPF packets.
-        TODO finish this
-        """
+        # TODO finish this
         self.protocol = "OSPF"
 
     def parse_pim_header(self):
-        """Packet.parse_pim_header() - Parse PIM packets.
-        TODO finish this
-        """
+        # TODO finish this
         self.protocol = "PIM"
 
     def parse_ipv6_header(self):
@@ -98,9 +92,19 @@ class Packet():
         TODO: finish this
         """
         self.protocol = "IPv6"
-        #offset = self.ethernet_header_length
-        #ipv6_header = unpack("!LHBBLL",
-        #                     self.packet[offset:offset+self.ipv6_header_length])
+        offset = self.ethernet_header_length
+        ipv6_header = unpack("!LHBB16s16s",
+                             self.packet[offset:offset+self.ipv6_header_length])
+        self.length = ipv6_header[1]
+        self.hoplimit = ipv6_header[3]
+        self.saddr = str(ipaddress.IPv6Address(ipv6_header[4]))
+        self.daddr = str(ipaddress.IPv6Address(ipv6_header[5]))
+        if ipv6_header[2] == 6:
+            self.parse_tcp_header()
+        elif ipv6_header[2] == 17:
+            self.parse_udp_header()
+        elif ipv6_header[2] == 58: # ICMPv6
+            self.parse_icmp_header()
 
     def parse_igmp_header(self):
         """Packet.parse_igmp_header() - Parse IGMP header.
@@ -110,8 +114,12 @@ class Packet():
 
     def parse_icmp_header(self):
         """Packet.parse_icmp_header() - Parse ICMP header."""
-        self.protocol = "ICMP"
-        offset = self.dot1q_offset + self.ethernet_header_length + self.ip_header_length
+        self.protocol = "ICMP6" if self.protocol == "IPv6" else "ICMP"
+        offset = self.dot1q_offset + self.ethernet_header_length
+        if self.protocol == "ICMP":
+            offset += self.ip_header_length
+        elif self.protocol == "ICMP6":
+            offset += self.ipv6_header_length
         icmp_header = unpack("!BBH",
                              self.packet[offset:offset+self.icmp_header_length])
         self.icmptype = icmp_header[0]
@@ -121,20 +129,28 @@ class Packet():
 
     def parse_udp_header(self):
         """Packet.parse_udp_header() - Parse UDP header."""
-        self.protocol = "UDP"
-        offset = self.dot1q_offset + self.ethernet_header_length + self.ip_header_length
+        self.protocol = "UDP6" if self.protocol == "IPv6" else "UDP"
+        offset = self.dot1q_offset + self.ethernet_header_length
+        if self.protocol == "UDP":
+            offset += self.ip_header_length
+        elif self.protocol == "UDP6":
+            offset += self.ipv6_header_length
         udp_header = unpack("!HHHH",
                             self.packet[offset:offset + self.udp_header_length])
         self.sport = udp_header[0]
         self.dport = udp_header[1]
-        self.len = udp_header[2]
+        self.length = udp_header[2]
         self.checksum = udp_header[3]
         self.data = self.packet[offset + self.udp_header_length:]
 
     def parse_tcp_header(self):
         """Packet.parse_tcp_header() - Parse TCP header."""
-        self.protocol = "TCP"
-        offset = self.dot1q_offset + self.ethernet_header_length + self.ip_header_length
+        self.protocol = "TCP6" if self.protocol == "IPv6" else "TCP"
+        offset = self.dot1q_offset + self.ethernet_header_length
+        if self.protocol == "TCP":
+            offset += self.ip_header_length
+        elif self.protocol == "TCP6":
+            offset += self.ipv6_header_length
         tcp_header = unpack("!HHLLBBHHH",
                             self.packet[offset:offset + self.tcp_header_length])
         self.sport = tcp_header[0]
