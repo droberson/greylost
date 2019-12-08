@@ -132,6 +132,10 @@ def _timefilter_packet(packet_dict):
 
     if timefilter.lookup(element) is False and not learning:
         for method in Settings.get("greylist_miss_methods"):
+            # log everything rather than stripped down element_dict
+            if method == _greylist_miss_log:
+                _greylist_miss_log(packet_dict)
+                continue
             method(element_dict)
     timefilter.add(element)
     del element_dict
