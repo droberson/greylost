@@ -63,9 +63,13 @@ http.kali.org
 * TODO cli flags to enable/disable specific logs (all, not dns, ...)
 * TODO add malicious domains to blocklist when using w/ dnsmasq
 * TODO ability to save/reload filter (for reboots/restarts)
+* TODO log in pcap format
+* TODO cleanup: are _functions necessary?
+* TODO remove repetitive patterns
+* TODO use syslog when daemonized; service starts, stops, signal received, ...
 * TODO detect dns protocol abuses
 - weird TXT/NULL records
 - hex/baseN encoded stuff: aabbccddeeff.whatever.com
 - volume
-- not dns at all.. they are just sending data over port 53
+- +not dns at all.. they are just sending data over port 53+
 * TODO setup.py
