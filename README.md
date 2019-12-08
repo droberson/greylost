@@ -73,7 +73,17 @@ Search for resolutions of _malware.com_:
 index=greylost-all "questions{}.qname"="malware.com."
 ```
 
+Counts of queries per host:
+```
+index=greylost-misses | chart count by saddr
+```
+
 Counts of query types:
 ```
 index=greylost-misses |chart count by "questions{}.qtype"
+```
+
+Hosts sending non-DNS traffic:
+```
+index=greylost-notdns | chart count by saddr
 ```
