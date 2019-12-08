@@ -38,14 +38,14 @@ https://www.elvidence.com.au/understanding-time-stamps-in-packet-capture-data-pc
 * DONE add mmh3 to requirements.txt
   CLOSED: [2019-12-08 Sun 10:24]
 This should speed it up a bit
+* DONE Splunk/ELK
+  CLOSED: [2019-12-08 Sun 11:43]
+Add examples of how to ingest this data. Don't really have to add any
+code for this...
 * TODO ignore list for bloom filter
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
 queries.
-* TODO Alerting for resolutions of known-bad domains
-Splunk/Discord webhook alerts if some booger eater tries to resolve
-http.kali.org
-* TODO test on authoritative DNS server
 * TODO shared bloom filter when using multiple resolvers
 this will be another project, but has other potential use cases.
 
@@ -54,11 +54,15 @@ example HTTP API:
 /lookup?filter=name_here&element=element_goes_here
 
 add a flag to use remote endpoint rather than local filter.
+* TODO Alerting for resolutions of known-bad domains
+Splunk/Discord webhook alerts if some booger eater tries to resolve
+http.kali.org
+* TODO config file
+* TODO test on authoritative DNS server
+* TODO cli flags to set logfile paths
+* TODO cli flags to enable/disable specific logs (all, not dns, ...)
 * TODO add malicious domains to blocklist when using w/ dnsmasq
 * TODO ability to save/reload filter (for reboots/restarts)
-* TODO Splunk/ELK
-Add examples of how to ingest this data. Don't really have to add any
-code for this...
 * TODO detect dns protocol abuses
 - weird TXT/NULL records
 - hex/baseN encoded stuff: aabbccddeeff.whatever.com
