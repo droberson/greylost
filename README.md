@@ -6,6 +6,9 @@ traffic to Google is typical for your environment, you won't be
 innundated with these query logs, but WILL get logs for
 malwaredomain123.xyz if that is an atypical query.
 
+This can be installed locally, on a resolver/forwarder, or on a
+machine plugged into a switchport that is mirroring ports.
+
 ## Installation
 ```
 pip3 install -r requirements.txt
@@ -40,4 +43,32 @@ optional arguments:
 Example:
 ```
 ./greylost.py -i eth0 --stdout --logging
+```
+
+## Splunk
+Add indexes:
+```
+greylost-all
+greylost-misses
+greylost-malware
+```
+
+Assuming you have Universal Forwarder installed and configured:
+```
+splunk add monitor /path/to/greylost-all.log -index greylost-all
+splunk add monitor /path/to/greylost-misses.log -index greylost-misses
+splunk add monitor /path/to/greylost-malware.log -index greylost-malware
+```
+
+No dashboards or application exists (yet), but here are some queries
+I've found useful:
+
+Search for resolutions of _malware.com_:
+```
+index=greylost-all "questions{}.qname"="malware.com."
+```
+
+Counts of query types. Look out for high number of TXT:
+```
+index=greylost-misses |chart count by "questions{}.qtype"
 ```
