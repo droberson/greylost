@@ -87,3 +87,8 @@ Hosts sending non-DNS traffic:
 ```
 index=greylost-notdns | chart count by saddr
 ```
+
+Hosts querying lots of TXT records:
+```
+index=greylost-misses "questions{}.qtype"=TXT | chart count by saddr
+```
