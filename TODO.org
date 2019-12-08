@@ -27,6 +27,17 @@ software to baseline DNS queries and not give alerts.
   CLOSED: [2019-11-29 Fri 22:12]
 * DONE investigate pypacket alternatives
   CLOSED: [2019-11-29 Fri 22:12]
+* DONE offline mode?
+  CLOSED: [2019-12-08 Sun 09:25]
++This might not work great; dont know if pcaps keep timestamps in a
+manner that I can utilize.+
+
+Abandoning this idea. Might do a different toolset to analyze pcaps.
+
+https://www.elvidence.com.au/understanding-time-stamps-in-packet-capture-data-pcap-files/
+* DONE add mmh3 to requirements.txt
+  CLOSED: [2019-12-08 Sun 10:24]
+This should speed it up a bit
 * TODO ignore list for bloom filter
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
@@ -34,6 +45,7 @@ queries.
 * TODO Alerting for resolutions of known-bad domains
 Splunk/Discord webhook alerts if some booger eater tries to resolve
 http.kali.org
+* TODO test on authoritative DNS server
 * TODO shared bloom filter when using multiple resolvers
 this will be another project, but has other potential use cases.
 
@@ -52,11 +64,4 @@ code for this...
 - hex/baseN encoded stuff: aabbccddeeff.whatever.com
 - volume
 - not dns at all.. they are just sending data over port 53
-* TODO add mmh3 to requirements.txt
-This should speed it up a bit
 * TODO setup.py
-* TODO offline mode?
-This might not work great; dont know if pcaps keep timestamps in a
-manner that I can utilize.
-
-https://www.elvidence.com.au/understanding-time-stamps-in-packet-capture-data-pcap-files/
