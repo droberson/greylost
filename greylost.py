@@ -101,6 +101,14 @@ def _stdout_packet_json(packet_dict):
 
 
 def _stdout_greylist_miss(packet_dict):
+    """ _stdout_greylist_miss() - Prints greylist misses to stdout.
+
+    Args:
+        packet_dict (dict) - dict containing information about the packet.
+
+    Returns:
+        True
+    """
     print("Not in filter:", json.dumps(packet_dict, indent=4))
     return True
 
@@ -179,6 +187,14 @@ def _greylist_miss_log(packet_dict):
 
 
 def _not_dns_log(packet_dict):
+    """_not_dns_log() - log non-DNS protocol traffic
+
+    Args:
+        packet_dict (dict) - dict derived from _parse_dns_packet()
+
+    Returns:
+        True if successful, False if unsuccessful
+    """
     log_fd = Settings.get("not_dns_log_fd")
     if log_fd:
         log_fd.write(json.dumps(packet_dict) + "\n")
@@ -330,6 +346,10 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
             Settings.get("greylist_miss_log_fd").close()
             greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
             Settings.set("greylist_miss_log_fd", greylist_miss_fd)
+        if Settings.get("not_dns_log_fd"):
+            Settings.get("not_dns_log_fd").close()
+            not_dns_fd = open_log_file(Settings.get("not_dns_log"))
+            Settings.set("not_dns_log_fd", not_dns_fd)
 
 
 def open_log_file(path):
