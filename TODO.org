@@ -55,7 +55,8 @@ example HTTP API:
 
 add a flag to use remote endpoint rather than local filter.
 * TODO Alerting for resolutions of known-bad domains
-Splunk/Discord webhook alerts if some booger eater tries to resolve
+** TODO ability to pull in from feeds
+** TODO webhook alerts
 http.kali.org
 * TODO config file
 * TODO test on authoritative DNS server
@@ -73,3 +74,8 @@ http.kali.org
 - volume
 - +not dns at all.. they are just sending data over port 53+
 * TODO setup.py
+* TODO interactive mode
+** TODO command prompt w/ readline and whatnot.
+** TODO ability to toggle settings.
+** TODO ability to query/add elements to ignore/malware lists
+** TODO highlight output
