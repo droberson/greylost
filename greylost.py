@@ -178,6 +178,15 @@ def _greylist_miss_log(packet_dict):
     return False
 
 
+def _not_dns_log(packet_dict):
+    log_fd = Settings.get("not_dns_log_fd")
+    if log_fd:
+        log_fd.write(json.dumps(packet_dict) + "\n")
+        log_fd.flush()
+        return True
+    return False
+
+
 def parse_cli():
     """parse_cli() -- parse CLI arguments
 
@@ -419,6 +428,12 @@ def open_log_files():
             Settings.set("greylist_miss_log_fd", greylist_miss_fd)
         else:
             print("something went wrong opening greylist_miss_log")
+    if Settings.get("not_dns_log"):
+        not_dns_fd = open_log_file(Settings.get("not_dns_log"))
+        if not_dns_fd:
+            Settings.set("not_dns_log_fd", not_dns_fd)
+        else:
+            print("something went wrong with not_dns_log")
 
 
 class Settings():
@@ -435,8 +450,10 @@ class Settings():
         "filter_time": 60*60*24, # 1 day
         "filter_learning_time": 0, # set to zero if you dont want to learn
         "packet_methods": [_timefilter_packet],
-        "not_dns_methods": [],
+        "not_dns_methods": [_not_dns_log],
         "greylist_miss_methods": [],
+        "not_dns_log": "greylost-notdns.log",
+        "not_dns_log_fd": None,
         "greylist_miss_log": "greylost-misses.log",
         "greylist_miss_log_fd": None,
         "all_log": "greylost-all.log",
