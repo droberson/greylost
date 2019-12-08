@@ -46,6 +46,9 @@ Example:
 ```
 
 ## Splunk
+The JSON logs provided by greylost can be indexed by Splunk.
+
+### Quickstart
 Add indexes:
 ```
 greylost-all
@@ -58,8 +61,10 @@ Assuming you have Universal Forwarder installed and configured:
 splunk add monitor /path/to/greylost-all.log -index greylost-all
 splunk add monitor /path/to/greylost-misses.log -index greylost-misses
 splunk add monitor /path/to/greylost-malware.log -index greylost-malware
+splunk add monitor /path/to/greylost-notdns.log -index greylost-notdns
 ```
 
+### Searching
 No dashboards or application exists (yet), but here are some queries
 I've found useful:
 
@@ -68,7 +73,7 @@ Search for resolutions of _malware.com_:
 index=greylost-all "questions{}.qname"="malware.com."
 ```
 
-Counts of query types. Look out for high number of TXT:
+Counts of query types:
 ```
 index=greylost-misses |chart count by "questions{}.qtype"
 ```
