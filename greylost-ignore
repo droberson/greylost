@@ -1,0 +1,7 @@
+# These give a high volume of queries and are generally safe to ignore in
+# my particular environment. YMMV!!
+# Also, note the trailing "." -- these are necessary!
+.netflix.com.
+.nflxso.com.
+.amazonvideo.com.
+
