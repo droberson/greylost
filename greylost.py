@@ -31,11 +31,17 @@ def _parse_dns_response(response_list):
     """
     response_sorted_list = []
     for response in response_list:
+        # <EDNS Option: Code=4 Data='0006629ac1efefda609ac1efefda'>
+        if type(response.rdata) == dnslib.EDNSOption:
+            rdata = {"code": response.rdata.code, "data": response.rdata.data}
+        else:
+            rdata = str(response.rdata)
+
         response_sorted_list.append({"rname": str(response.rname),
                                      "rtype": DNS_RECORD_TYPES[response.rtype],
                                      "rtype_id": response.rtype,
                                      "rclass": response.rclass,
-                                     "rdata": str(response.rdata),
+                                     "rdata": rdata,
                                      "ttl": response.ttl})
     return sorted(response_sorted_list, key=lambda k: k["rdata"])
 
