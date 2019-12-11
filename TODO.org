@@ -42,7 +42,8 @@ This should speed it up a bit
   CLOSED: [2019-12-08 Sun 11:43]
 Add examples of how to ingest this data. Don't really have to add any
 code for this...
-* TODO ignore list for bloom filter
+* DONE ignore list for bloom filter
+  CLOSED: [2019-12-11 Wed 10:08]
 mcafee is making a ton of random resolutions. we know that this
 particular case is benign, so add some feature to ignore these
 queries.
