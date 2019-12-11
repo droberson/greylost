@@ -32,7 +32,8 @@ def _parse_dns_response(response_list):
     response_sorted_list = []
     for response in response_list:
         # <EDNS Option: Code=4 Data='0006629ac1efefda609ac1efefda'>
-        if type(response.rdata) == dnslib.EDNSOption:
+        #if type(response.rdata) == dnslib.EDNSOption:
+        if isinstance(response.rdata, dnslib.EDNSOption):
             rdata = {"code": response.rdata.code, "data": response.rdata.data}
         else:
             rdata = str(response.rdata)
@@ -374,12 +375,19 @@ def parse_cli():
 
     if args.ignore:
         Settings.set("greylist_ignore_domains_file", args.ignore)
-        populate_greylist_ignore_list()
+        populate_greylist_ignore_list(args.ignore)
 
 
-def populate_greylist_ignore_list():
+def populate_greylist_ignore_list(ignore_file):
+    """populate_greylist_ignore_list() - populate ignore list from file
+
+    Args:
+        ignore_file (str) - path to file
+
+    Returns:
+        Nothing on success. Exits with os.EX_USAGE if the file doesn't exist
+    """
     ignore_list = set()
-    ignore_file = Settings.get("greylist_ignore_domains_file")
     try:
         with open(ignore_file, "r") as ignore:
             for line in ignore:
@@ -402,6 +410,7 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
     Returns:
         Nothing
     """
+    # TODO log caught signals to syslog
     if Settings.get("logging"):
         if Settings.get("all_log_fd"):
             Settings.get("all_log_fd").close()
@@ -415,6 +424,9 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
             Settings.get("not_dns_log_fd").close()
             not_dns_fd = open_log_file(Settings.get("not_dns_log"))
             Settings.set("not_dns_log_fd", not_dns_fd)
+
+    if Settings.get("greylist_ignore_domains_file"):
+        populate_greylist_ignore_list(Settings.get("greylist_ignore_domains_file"))
 
 
 def open_log_file(path):
@@ -448,6 +460,8 @@ def startup_blurb():
     if Settings.get("logging"):
         print("        miss log: %s" % Settings.get("greylist_miss_log"))
         print("         all log: %s" % Settings.get("all_log"))
+    if Settings.get("greylist_ignore_domains_file"):
+        print("     ignore list: %s" % Settings.get("greylist_ignore_domains_file"))
 
     count = 0
     methods = len(Settings.get("packet_methods"))
