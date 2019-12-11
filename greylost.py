@@ -43,6 +43,7 @@ def _parse_dns_response(response_list):
                                      "rclass": response.rclass,
                                      "rdata": rdata,
                                      "ttl": response.ttl})
+    # Sort results to avoid logical duplicates in the bloom filter
     return sorted(response_sorted_list, key=lambda k: k["rdata"])
 
 
@@ -68,6 +69,7 @@ def _parse_dns_packet(packet):
         dns_packet = dnslib.DNSRecord.parse(packet.data)
     except (dnslib.dns.DNSError, TypeError):
         if packet.data:
+            # TODO don't encode if everything is printable
             output["payload"] = b64encode(packet.data).decode("utf-8")
         return output
 
@@ -119,6 +121,35 @@ def _stdout_greylist_miss(packet_dict):
     return True
 
 
+def _check_greylist_ignore_list(packet_dict):
+    try:
+        for question in packet_dict["questions"]:
+            for ignore in Settings.get("greylist_ignore_domains"):
+                if question["qname"].endswith(ignore):
+                    return True
+                # .example.com. matches foo.example.com. and example.com.
+                if ignore.startswith(".") and question["qname"].endswith(ignore[1:]):
+                    return True
+    except KeyError:
+        pass
+    return False
+    # TODO should I check responses too? need to collect more data...
+    # for response in ["rr", "ar", "auth"]:
+    #     try:
+    #         for chk in packet_dict[response]:
+    #             for ign in Settings.get("greylist_ignore_domains"):
+    #                 if chk["rdata"].endswith(ign) or chk["rname"].endswith(ign):
+    #                     return True
+    #                 # .example.com. matches foo.example.com. and example.com.
+    #                 if ign[0] == "." and chk["rname"].endswith(ign[1:]):
+    #                     return True
+    #                 if ign[0] == "." and chk["rdata"].endswith(ign[1:]):
+    #                     return True
+    #     except KeyError:
+    #         pass
+    # return False
+
+
 def _timefilter_packet(packet_dict):
     # Replies are sorted rather than logged in the order in which
     # they were received because they aren't guaranteed to be in
@@ -127,6 +158,10 @@ def _timefilter_packet(packet_dict):
     # elements.  Sorting will avoid duplicate elements in the
     # bloom filter when they are logically the same, thus,
     # reducing the required size of the filter.
+
+    # Check if domain is in ignore list.
+    if _check_greylist_ignore_list(packet_dict):
+        return False
 
     timefilter = Settings.get("timefilter")
 
@@ -249,6 +284,11 @@ def parse_cli():
         help="Toggle logging")
 
     parser.add_argument(
+        "--ignore",
+        default=None,
+        help="File containing list of domains to ignore when greylisting")
+
+    parser.add_argument(
         "-i",
         "--interface",
         default="eth0",
@@ -331,6 +371,25 @@ def parse_cli():
 
     if args.pidfile:
         Settings.set("pid_file_path", args.pidfile)
+
+    if args.ignore:
+        Settings.set("greylist_ignore_domains_file", args.ignore)
+        populate_greylist_ignore_list()
+
+
+def populate_greylist_ignore_list():
+    ignore_list = set()
+    ignore_file = Settings.get("greylist_ignore_domains_file")
+    try:
+        with open(ignore_file, "r") as ignore:
+            for line in ignore:
+                if line.rstrip() == "" or line.startswith("#"):
+                    continue
+                ignore_list.add(line.rstrip())
+    except FileNotFoundError as exc:
+        print("[-] Unable to open ignore list %s: %s" % (ignore_file, exc))
+        exit(os.EX_USAGE)
+    Settings.set("greylist_ignore_domains", ignore_list)
 
 
 def sig_hup_handler(signo, frame): # pylint: disable=W0613
@@ -478,6 +537,8 @@ class Settings():
         "packet_methods": [_timefilter_packet],
         "not_dns_methods": [_not_dns_log],
         "greylist_miss_methods": [],
+        "greylist_ignore_domains": set(),
+        "greylist_ignore_domains_file": None,
         "not_dns_log": "greylost-notdns.log",
         "not_dns_log_fd": None,
         "greylist_miss_log": "greylost-misses.log",
