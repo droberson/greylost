@@ -346,7 +346,14 @@ def parse_cli():
         "-v",
         "--verbose",
         default=False,
-        action="store_true")
+        action="store_true",
+        help="increase verbosity")
+
+    parser.add_argument(
+        "-w",
+        "--dumpfile",
+        default=None,
+        help="write captured packets to a dumpfile")
 
     args = parser.parse_args()
 
@@ -358,6 +365,7 @@ def parse_cli():
     Settings.set("filter_learning_time", args.learningtime)
     Settings.set("verbose", args.verbose)
     Settings.set("daemonize", args.daemonize)
+    Settings.set("pcap_dumpfile", args.dumpfile)
 
     if args.stdout:
         packet_methods = Settings.get("packet_methods")
@@ -447,6 +455,7 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
 
     if Settings.get("greylist_ignore_domains_file"):
         populate_greylist_ignore_list(Settings.get("greylist_ignore_domains_file"))
+    # TODO rotate pcaps?
 
 
 def open_log_file(path):
@@ -480,6 +489,8 @@ def startup_blurb():
     if Settings.get("logging"):
         print("        miss log: %s" % Settings.get("greylist_miss_log"))
         print("         all log: %s" % Settings.get("all_log"))
+    if Settings.get("pcap_dumpfile"):
+        print("   pcap dumpfile: %s" % Settings.get("pcap_dumpfile"))
     if Settings.get("greylist_ignore_domains_file"):
         print("     ignore list: %s" % Settings.get("greylist_ignore_domains_file"))
 
@@ -581,6 +592,7 @@ class Settings():
         "all_log_fd": None,
         "verbose": False,
         "pid_file_path": "greylost.pid",
+        "pcap_dumpfile": None,
     }
 
     @staticmethod
@@ -646,6 +658,12 @@ def main():
     capture = Sniffer(Settings.get("interface"), bpf=Settings.get("bpf"))
     capture.start()
     capture.setnonblock()
+    if Settings.get("pcap_dumpfile"):
+        result = capture.dump_open(Settings.get("pcap_dumpfile"))
+        if not result[0]:
+            print("[-] Unable to open %s for writing: %s" % \
+                  (Settings.get("pcap_dumpfile"), result[1]))
+            exit(os.EX_USAGE)
 
     while True:
         packet = capture.next()

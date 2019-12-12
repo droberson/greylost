@@ -25,6 +25,8 @@ class Sniffer():
         self.snaplen = snaplen
         self.timeout = timeout
         self.sniffer = None
+        self.dumper = None
+        self.dumpfile = None
 
     def start(self):
         """ Sniffer.start() - Start the sniffer.
@@ -51,10 +53,51 @@ class Sniffer():
         Returns:
             Packet object of the next packet on success, None on failure.
         """
-        _, packet = self.sniffer.next()
-        return Packet(packet) if packet else None
+        header, packet = self.sniffer.next()
+
+        if packet:
+            if self.dumper:
+                self.dumper.dump(header, packet)
+            return Packet(packet)
+        return None
+        #return Packet(packet) if packet else None
 
     def setnonblock(self):
-        """ Sniffer.setnonblock() - set sniffer to non-blocking mode. """
+        """ Sniffer.setnonblock() - set sniffer to non-blocking mode.
+
+        Args:
+            None.
+
+        Returns:
+            Nothing.
+        """
         # TODO error check
         self.sniffer.setnonblock(1)
+
+    def dump_open(self, path):
+        """ Sniffer.dump_open() - open dumpfile to write pcaps to.
+
+        Args:
+            path (str) - path to dumpfile.
+
+        Returns:
+            tuple: (True/False, None/descriptive failure message)
+        """
+        self.dumpfile = path
+        try:
+            self.dumper = self.sniffer.dump_open(path)
+        except pcapy.PcapError as exc:
+            return (False, exc)
+        return (True, None)
+
+    def dump_close(self):
+        """ Sniffer.dump_close() - close pcap dumpfile.
+
+        Args:
+            None.
+
+        Returns:
+            Nothing.
+        """
+        # TODO error check
+        self.dumper.close()
