@@ -51,6 +51,10 @@ queries.
   CLOSED: [2019-12-12 Thu 07:30]
 * DONE ability to save/reload filter (for reboots/restarts)
   CLOSED: [2019-12-12 Thu 14:05]
+* DONE log in pcap format
+  CLOSED: [2019-12-12 Thu 14:19]
+* DONE test on authoritative DNS server
+  CLOSED: [2019-12-12 Thu 14:19]
 * TODO shared bloom filter when using multiple resolvers
 this will be another project, but has other potential use cases.
 
@@ -64,10 +68,8 @@ add a flag to use remote endpoint rather than local filter.
 ** TODO webhook alerts
 http.kali.org
 * TODO config file
-* TODO test on authoritative DNS server
 * TODO cli flags to enable/disable specific logs (all, not dns, ...)
 * TODO add malicious domains to blocklist when using w/ dnsmasq
-* TODO log in pcap format
 * TODO cleanup: are _functions necessary?
 * TODO remove repetitive patterns
 * TODO use syslog when daemonized; service starts, stops, signal received, ...
