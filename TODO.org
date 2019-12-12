@@ -49,6 +49,8 @@ particular case is benign, so add some feature to ignore these
 queries.
 * DONE cli flags to set logfile paths
   CLOSED: [2019-12-12 Thu 07:30]
+* DONE ability to save/reload filter (for reboots/restarts)
+  CLOSED: [2019-12-12 Thu 14:05]
 * TODO shared bloom filter when using multiple resolvers
 this will be another project, but has other potential use cases.
 
@@ -65,7 +67,6 @@ http.kali.org
 * TODO test on authoritative DNS server
 * TODO cli flags to enable/disable specific logs (all, not dns, ...)
 * TODO add malicious domains to blocklist when using w/ dnsmasq
-* TODO ability to save/reload filter (for reboots/restarts)
 * TODO log in pcap format
 * TODO cleanup: are _functions necessary?
 * TODO remove repetitive patterns
@@ -76,6 +77,7 @@ http.kali.org
 - volume
 - +not dns at all.. they are just sending data over port 53+
 * TODO setup.py
+* TODO log to socket
 * TODO interactive mode
 ** TODO command prompt w/ readline and whatnot.
 ** TODO ability to toggle settings.

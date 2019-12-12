@@ -9,6 +9,8 @@ import json
 import copy
 import argparse
 import signal
+import pickle
+import atexit
 from base64 import b64encode
 from time import sleep, time
 from datetime import datetime
@@ -329,6 +331,11 @@ def parse_cli():
         help="Path to PID file")
 
     parser.add_argument(
+        "--filterfile",
+        default=None,
+        help="Path to timefilter's state file.")
+
+    parser.add_argument(
         "-s",
         "--filtersize",
         default=10000000,
@@ -366,6 +373,10 @@ def parse_cli():
     Settings.set("verbose", args.verbose)
     Settings.set("daemonize", args.daemonize)
     Settings.set("pcap_dumpfile", args.dumpfile)
+
+    if args.filterfile:
+        # TODO does this exist/is it writeable?
+        Settings.set("filter_file", args.filterfile)
 
     if args.stdout:
         packet_methods = Settings.get("packet_methods")
@@ -566,6 +577,20 @@ def open_log_files():
             print("something went wrong with not_dns_log")
 
 
+def save_timefilter_state():
+    """" save_timefilter_state() - Save TimeFilter to disk
+
+    Args:
+        None.
+
+    Returns:
+        Nothing.
+    """
+    if Settings.get("filter_file"):
+        with open(Settings.get("filter_file"), "wb") as filterfile:
+            pickle.dump(Settings.get("timefilter"), filterfile)
+
+
 class Settings():
     """ Settings - Application settings object. """
     __config = {
@@ -575,6 +600,7 @@ class Settings():
         "timefilter": None,
         "interface": None,
         "bpf": None,
+        "filter_file": None,
         "filter_size": None,
         "filter_precision": 0.001,
         "filter_time": 60*60*24, # 1 day
@@ -645,12 +671,28 @@ def main():
 
     # Signal handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
+    atexit.register(save_timefilter_state)
 
-    # Random start of program stuff
+    # Create timefilter
+    # TODO save other metadata to disk; start time, filter attributes, etc.
+    #      i think this will cause problems if invoked again with different
+    #      values while using a filter file, but have not tested yet.
     Settings.set("starttime", time())
     Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
                                           Settings.get("filter_precision"),
                                           Settings.get("filter_time")))
+    # Restore TimeFilter's saved state from disk
+    if Settings.get("filter_file"):
+        filter_file_exists = False
+        try:
+            with open(Settings.get("filter_file"), "rb") as filterfile:
+                timefilter = filterfile.read()
+            filter_file_exists = True
+        except FileNotFoundError:
+            pass
+        if filter_file_exists:
+            Settings.set("timefilter", pickle.loads(timefilter))
+
     startup_blurb()
     open_log_files()
 
