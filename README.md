@@ -16,28 +16,44 @@ pip3 install -r requirements.txt
 
 ## Usage:
 ```
-usage: greylost.py [-h] [-b BPF] [--learningtime LEARNINGTIME] [--logging]
-                   [-i INTERFACE] [-o] [-p PRECISION] [-s FILTERSIZE]
-                   [-t FILTERTIME]
+usage: greylost.py [-h] [--alllog ALLLOG] [--notdnslog NOTDNSLOG]
+                   [--greylistmisslog GREYLISTMISSLOG] [-b BPF] [-d]
+                   [--learningtime LEARNINGTIME] [--logging] [--ignore IGNORE]
+                   [-i INTERFACE] [-o] [-p PRECISION] [-r PIDFILE]
+                   [-s FILTERSIZE] [-t FILTERTIME] [-v] [-w DUMPFILE]
 
 greylost by @dmfroberson
 
 optional arguments:
   -h, --help            show this help message and exit
+  --alllog ALLLOG       /path/to/all-log -- log of all DNS queries
+  --notdnslog NOTDNSLOG
+                        /path/to/not-dns-log -- log of non-DNS protocol
+                        traffic
+  --greylistmisslog GREYLISTMISSLOG
+                        /path/to/greylist-miss-log -- log of greylist misses
   -b BPF, --bpf BPF     BPF filter to apply to the sniffer
+  -d, --daemonize       Daemonize
   --learningtime LEARNINGTIME
                         Time to baseline queries before alerting on greylist
                         misses
   --logging             Toggle logging
+  --ignore IGNORE       File containing list of domains to ignore when
+                        greylisting
   -i INTERFACE, --interface INTERFACE
                         Interface to sniff
   -o, --stdout          Toggle stdout output
   -p PRECISION, --precision PRECISION
                         Precision of bloom filter. Ex: 0.001
+  -r PIDFILE, --pidfile PIDFILE
+                        Path to PID file
   -s FILTERSIZE, --filtersize FILTERSIZE
                         Size of bloom filter
   -t FILTERTIME, --filtertime FILTERTIME
                         Filter time
+  -v, --verbose         increase verbosity
+  -w DUMPFILE, --dumpfile DUMPFILE
+                        Write captured packets to a dumpfile
 ```
 
 Example:

@@ -347,13 +347,13 @@ def parse_cli():
         "--verbose",
         default=False,
         action="store_true",
-        help="increase verbosity")
+        help="Increase verbosity")
 
     parser.add_argument(
         "-w",
         "--dumpfile",
         default=None,
-        help="write captured packets to a dumpfile")
+        help="Write captured packets to a dumpfile")
 
     args = parser.parse_args()
 
