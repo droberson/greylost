@@ -257,11 +257,24 @@ def parse_cli():
     description = "greylost by @dmfroberson"
     parser = argparse.ArgumentParser(description=description)
 
-    # TODO set log file paths
+    parser.add_argument(
+        "--alllog",
+        default=False,
+        help="/path/to/all-log -- log of all DNS queries")
+
+    parser.add_argument(
+        "--notdnslog",
+        default=False,
+        help="/path/to/not-dns-log -- log of non-DNS protocol traffic")
+
+    parser.add_argument(
+        "--greylistmisslog",
+        default=False,
+        help="/path/to/greylist-miss-log -- log of greylist misses")
+
     parser.add_argument(
         "-b",
         "--bpf",
-        type=str,
         default="port 53 or port 5353",
         help="BPF filter to apply to the sniffer")
 
@@ -376,6 +389,13 @@ def parse_cli():
     if args.ignore:
         Settings.set("greylist_ignore_domains_file", args.ignore)
         populate_greylist_ignore_list(args.ignore)
+
+    if args.alllog:
+        Settings.set("all_log", args.alllog)
+    if args.notdnslog:
+        Settings.set("not_dns_log", args.notdnslog)
+    if args.greylistmisslog:
+        Settings.set("greylist_miss_log", args.greylistmisslog)
 
 
 def populate_greylist_ignore_list(ignore_file):
