@@ -1,5 +1,8 @@
 Greylost TODO
 
+This looks dumb rendered in GitHub. Open with org-mode for better
+results.
+
 * DONE get basic PoC working
   CLOSED: [2019-11-24 Sun 19:51]
 * DONE timestamps
@@ -57,8 +60,10 @@ queries.
   CLOSED: [2019-12-12 Thu 14:19]
 * DONE remove repetitive patterns
   CLOSED: [2019-12-12 Thu 22:35]
-* TODO cli flags to enable/disable specific logs (all, not dns, ...)
+* DONE cli flags to enable/disable specific logs (all, not dns, ...)
+  CLOSED: [2019-12-13 Fri 08:58]
 * TODO systemd and init scripts to start as a service
+* TODO pid file watchdog script for crontab
 * TODO TimeFilter stores decimal currently. Look into storing as int instead.
 Since we don't need this precision, look into storing integers to save
 space in RAM and on disk when its pickled.
