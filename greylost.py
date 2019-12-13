@@ -246,7 +246,7 @@ def _not_dns_log(packet_dict):
     return False
 
 
-def parse_cli():
+def parse_cli(): # pylint: disable=R0915
     """parse_cli() -- parse CLI arguments
 
     Args:
@@ -632,7 +632,7 @@ class Settings():
         raise NameError("Not a valid setting for set():", name)
 
 
-def main():
+def main(): # pylint: disable=R0912
     """ main() - Entry point. """
     parse_cli()
 
@@ -646,7 +646,7 @@ def main():
             sys.exit(1)
     write_pid_file(Settings.get("pid_file_path"))
 
-    # Signal handlers
+    # Signal and atexit handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
     atexit.register(save_timefilter_state)
 
