@@ -62,6 +62,10 @@ queries.
   CLOSED: [2019-12-12 Thu 22:35]
 * DONE cli flags to enable/disable specific logs (all, not dns, ...)
   CLOSED: [2019-12-13 Fri 08:58]
+* DONE webhook alerts
+  CLOSED: [2019-12-13 Fri 09:09]
+For really important events, send a webhook alert.
+Closing this, should be done via Splunk or ELK
 * TODO systemd and init scripts to start as a service
 * TODO pid file watchdog script for crontab
 * TODO TimeFilter stores decimal currently. Look into storing as int instead.
@@ -76,8 +80,6 @@ start.parrotsec.org
 This might be worthy of an entire new tool. Be able to pull in
 multiple sources and store them in a manner that can be used
 universally.
-* TODO webhook alerts
-For really important events, send a webhook alert.
 * TODO shared bloom filter when using multiple resolvers
 This will be another project, but has other potential use cases:
  - NSRL
