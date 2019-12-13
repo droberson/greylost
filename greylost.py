@@ -34,7 +34,6 @@ def _parse_dns_response(response_list):
     response_sorted_list = []
     for response in response_list:
         # <EDNS Option: Code=4 Data='0006629ac1efefda609ac1efefda'>
-        #if type(response.rdata) == dnslib.EDNSOption:
         if isinstance(response.rdata, dnslib.EDNSOption):
             rdata = {"code": response.rdata.code, "data": response.rdata.data}
         else:
@@ -451,18 +450,13 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
     """
     # TODO log caught signals to syslog
     if Settings.get("logging"):
-        if Settings.get("all_log_fd"):
-            Settings.get("all_log_fd").close()
-            all_log_fd = open_log_file(Settings.get("all_log"))
-            Settings.set("all_log_fd", all_log_fd)
-        if Settings.get("greylist_miss_log_fd"):
-            Settings.get("greylist_miss_log_fd").close()
-            greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
-            Settings.set("greylist_miss_log_fd", greylist_miss_fd)
-        if Settings.get("not_dns_log_fd"):
-            Settings.get("not_dns_log_fd").close()
-            not_dns_fd = open_log_file(Settings.get("not_dns_log"))
-            Settings.set("not_dns_log_fd", not_dns_fd)
+        log_fds = ["all_log_fd", "greylist_miss_log_fd", "not_dns_log_fd"]
+        for log_fd in log_fds:
+            if not Settings.get(log_fd):
+                continue
+            Settings.get(log_fd).close()
+            new_fd = open_log_file(Settings.get(log_fd[:-3])) # strip "_fd"
+            Settings.set(log_fd, new_fd)
 
     if Settings.get("greylist_ignore_domains_file"):
         populate_greylist_ignore_list(Settings.get("greylist_ignore_domains_file"))
@@ -587,6 +581,7 @@ def save_timefilter_state():
         Nothing.
     """
     if Settings.get("filter_file"):
+        # TODO make sure this succeeds
         with open(Settings.get("filter_file"), "wb") as filterfile:
             pickle.dump(Settings.get("timefilter"), filterfile)
 
@@ -667,7 +662,7 @@ def main():
         except OSError as exc:
             print("fork(): %s" % exc, file=sys.stderr)
             sys.exit(1)
-        write_pid_file(Settings.get("pid_file_path"))
+    write_pid_file(Settings.get("pid_file_path"))
 
     # Signal handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
@@ -691,6 +686,9 @@ def main():
         except FileNotFoundError:
             pass
         if filter_file_exists:
+            # TODO make sure pickle succeeds and validate its contents
+            # TODO other filter settings? currently not saving these and
+            #      relying on CLI/config to be correct.
             Settings.set("timefilter", pickle.loads(timefilter))
 
     startup_blurb()
