@@ -183,7 +183,7 @@ def _timefilter_packet(packet_dict):
 
     if timefilter.lookup(element) is False and not learning:
         for method in Settings.get("greylist_miss_methods"):
-            # log everything rather than stripped down element_dict
+            # Log everything rather than stripped down element_dict
             if method is _greylist_miss_log:
                 _greylist_miss_log(packet_dict)
                 continue
@@ -246,7 +246,7 @@ def _not_dns_log(packet_dict):
     return False
 
 
-def parse_cli(): # pylint: disable=R0915
+def parse_cli(): # pylint: disable=R0915,R0912
     """parse_cli() -- parse CLI arguments
 
     Args:
@@ -374,7 +374,12 @@ def parse_cli(): # pylint: disable=R0915
     Settings.set("pcap_dumpfile", args.dumpfile)
 
     if args.filterfile:
-        # TODO does this exist/is it writeable?
+        try:
+            with open(args.filterfile, "wb"):
+                pass
+        except PermissionError as exc:
+            print("[-] Unable to open filter %s: %s" % (args.filterfile, exc))
+            exit(os.EX_USAGE)
         Settings.set("filter_file", args.filterfile)
 
     if args.stdout:
@@ -563,9 +568,13 @@ def save_timefilter_state():
         Nothing.
     """
     if Settings.get("filter_file"):
-        # TODO make sure this succeeds
-        with open(Settings.get("filter_file"), "wb") as filterfile:
-            pickle.dump(Settings.get("timefilter"), filterfile)
+        try:
+            with open(Settings.get("filter_file"), "wb") as filterfile:
+                pickle.dump(Settings.get("timefilter"), filterfile)
+        except PermissionError as exc:
+            print("[-] Unable to open filter %s: %s" % \
+                  (Settings.get("filter_file"), exc))
+            exit(os.EX_USAGE)
 
 
 class Settings():
@@ -689,7 +698,12 @@ def main(): # pylint: disable=R0912
 
     while True:
         packet = capture.next()
-        if not packet:
+        if packet is False:
+            print("[-] Interface %s went down. Exiting." % \
+                  Settings.get("interface"))
+            exit(os.EX_USAGE)
+
+        if packet is None:
             # sleep() avoids 100% CPU use. Probably a better way to do this??
             sleep(0.05)
             continue
