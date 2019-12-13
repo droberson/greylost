@@ -6,7 +6,7 @@ import pcapy
 from pypacket import Packet
 
 
-class Sniffer():
+class Sniffer(): # pylint: disable=R0902
     """ Sniffer() - Sniffer object.
 
     Attributes:
@@ -16,6 +16,8 @@ class Sniffer():
         snaplen (int)      - snaplen
         timeout (int)      - timeout.
         sniffer            - fd used by libpcap.
+        dumper             - Dumper object for logging pcap data
+        dumpfile           - Path to pcap dumpfile
     """
     # pylint: disable=R0913
     def __init__(self, interface, promisc=1, bpf="", snaplen=65535, timeout=100):
@@ -44,23 +46,27 @@ class Sniffer():
         self.sniffer.setfilter(self.bpf)
 
     def next(self):
-        # TODO catch exception if interface goes down and exit gracefully
         """ Sniffer.next() - Get next packet from sniffer.
 
         Args:
             None.
 
         Returns:
-            Packet object of the next packet on success, None on failure.
+            Packet object of the next packet on success
+            None if no packet exists (non-blocking).
+            False on error
         """
-        header, packet = self.sniffer.next()
+        try:
+            header, packet = self.sniffer.next()
+        except pcapy.PcapError:
+            return False
 
         if packet:
+            # Log packet if a dumper exists.
             if self.dumper:
                 self.dumper.dump(header, packet)
             return Packet(packet)
         return None
-        #return Packet(packet) if packet else None
 
     def setnonblock(self):
         """ Sniffer.setnonblock() - set sniffer to non-blocking mode.
@@ -69,10 +75,13 @@ class Sniffer():
             None.
 
         Returns:
-            Nothing.
+            True if successful, False if unsuccessful.
         """
-        # TODO error check
-        self.sniffer.setnonblock(1)
+        try:
+            self.sniffer.setnonblock(1)
+        except AttributeError:
+            return False
+        return True
 
     def dump_open(self, path):
         """ Sniffer.dump_open() - open dumpfile to write pcaps to.
@@ -97,7 +106,10 @@ class Sniffer():
             None.
 
         Returns:
-            Nothing.
+            True if successful, False if unsuccessful.
         """
-        # TODO error check
-        self.dumper.close()
+        try:
+            self.dumper.close()
+        except AttributeError:
+            return False
+        return True
