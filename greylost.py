@@ -349,6 +349,21 @@ def parse_cli(): # pylint: disable=R0915,R0912
         help="Filter time")
 
     parser.add_argument(
+        "--toggle-all-log",
+        action="store_true",
+        help="Toggle all log")
+
+    parser.add_argument(
+        "--toggle-not-dns-log",
+        action="store_true",
+        help="Toggle not DNS log")
+
+    parser.add_argument(
+        "--toggle-greylist-miss-log",
+        action="store_true",
+        help="Toggle greylist miss log")
+
+    parser.add_argument(
         "-v",
         "--verbose",
         default=False,
@@ -372,6 +387,13 @@ def parse_cli(): # pylint: disable=R0915,R0912
     Settings.set("verbose", args.verbose)
     Settings.set("daemonize", args.daemonize)
     Settings.set("pcap_dumpfile", args.dumpfile)
+
+    if args.toggle_all_log:
+        Settings.set("logging_all", not Settings.get("logging_all"))
+    if args.toggle_not_dns_log:
+        Settings.set("logging_not_dns", not Settings.get("logging_not_dns"))
+    if args.toggle_greylist_miss_log:
+        Settings.set("logging_greylist_miss", not Settings.get("logging_greylist_miss"))
 
     if args.filterfile:
         try:
@@ -454,6 +476,7 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
         Nothing
     """
     # TODO log caught signals to syslog
+    print("[+] Caught HUP signal. Reloading logs.")
     if Settings.get("logging"):
         log_fds = ["all_log_fd", "greylist_miss_log_fd", "not_dns_log_fd"]
         for log_fd in log_fds:
@@ -536,21 +559,22 @@ def write_pid_file(path):
 
 def open_log_files():
     """open_log_files() - Open up log files and store fds in Settings()"""
+    # TODO what in the wild world of extreme sports is going on in here?
     if not Settings.get("logging"):
         return
-    if Settings.get("all_log"):
+    if Settings.get("all_log") and Settings.get("logging_all"):
         all_log_fd = open_log_file(Settings.get("all_log"))
         if all_log_fd:
             Settings.set("all_log_fd", all_log_fd)
         else:
             print("something went wrong opening all_log")
-    if Settings.get("greylist_miss_log"):
+    if Settings.get("greylist_miss_log") and Settings.get("logging_greylist_miss"):
         greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
         if greylist_miss_fd:
             Settings.set("greylist_miss_log_fd", greylist_miss_fd)
         else:
             print("something went wrong opening greylist_miss_log")
-    if Settings.get("not_dns_log"):
+    if Settings.get("not_dns_log") and Settings.get("logging_not_dns"):
         not_dns_fd = open_log_file(Settings.get("not_dns_log"))
         if not_dns_fd:
             Settings.set("not_dns_log_fd", not_dns_fd)
@@ -579,9 +603,13 @@ def save_timefilter_state():
 
 class Settings():
     """ Settings - Application settings object. """
+    # TODO document what settings do.
     __config = {
         "starttime": None,
         "logging": False,
+        "logging_all": True,
+        "logging_greylist_miss": True,
+        "logging_not_dns": True,
         "daemonize": False,
         "timefilter": None,
         "interface": None,
