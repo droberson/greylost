@@ -1,11 +1,13 @@
+""" pypacket - parse packets so a human can use them """
+
 import socket
 import ipaddress
-from struct import pack, unpack
+from struct import unpack
 
 class Packet():
     """Packet class - Parses an Ethernet frame so you dont have to!@#"""
     # pylint: disable=too-many-instance-attributes
-    def __init__(self, raw_packet):
+    def __init__(self, raw_packet): # pylint: disable=R0915
         self.packet = raw_packet # Raw packet contents
         self.data = None         # Packet data
         self.ethertype = None    # Ethertype.
@@ -65,6 +67,7 @@ class Packet():
             elif self.protocol == 103:
                 self.parse_pim_header()
             else: # UNKNOWN PROTOCOL
+                # TODO shouldn't print() this...
                 print(self.protocol, self.packet)
 
         elif self.ethertype == 0x86dd: # IPv6
@@ -74,23 +77,23 @@ class Packet():
             self.parse_arp()
 
     def parse_arp(self):
-        """Packet.parse_arp() - Parse ARP packets.
-        TODO: finish this
-        """
+        """Packet.parse_arp() - Parse ARP packets."""
+        # TODO: finish this
         self.protocol = "ARP"
 
     def parse_ospf_header(self):
+        """Packet.parse_ospf_header() - Parse OSPF headers."""
         # TODO finish this
         self.protocol = "OSPF"
 
     def parse_pim_header(self):
+        """Packet.parse_pim_header() - Parse PIM headers."""
         # TODO finish this
         self.protocol = "PIM"
 
     def parse_ipv6_header(self):
-        """Packet.parse_ipv6_header() - Parse IPv6 packets.
-        TODO: finish this
-        """
+        """Packet.parse_ipv6_header() - Parse IPv6 packets."""
+        # TODO: finish this
         self.protocol = "IPv6"
         offset = self.ethernet_header_length
         ipv6_header = unpack("!LHBB16s16s",
@@ -107,9 +110,8 @@ class Packet():
             self.parse_icmp_header()
 
     def parse_igmp_header(self):
-        """Packet.parse_igmp_header() - Parse IGMP header.
-        TODO: finish this
-        """
+        """Packet.parse_igmp_header() - Parse IGMP header."""
+        # TODO: finish this
         self.protocol = "IGMP"
 
     def parse_icmp_header(self):
@@ -171,7 +173,7 @@ class Packet():
             control (str) - TCP control bytes
 
         Returns:
-            tcpdump style flags.
+            tcpdump-style flags (str).
         """
         tcp_flags = ""
         if control & 0x01: # FIN
@@ -193,11 +195,10 @@ class Packet():
         return tcp_flags
 
     def parse_ip_header(self):
-        """Packet.parse_ip_header() - Parse IP header.
-        TODO: make this complete. May need some of the other header elements
-              for other tools instead of ttl, protocol, source, and destination
-              http://www.networksorcery.com/enp/protocol/ip.htm
-        """
+        """Packet.parse_ip_header() - Parse IP header."""
+        # TODO: make this complete. May need some of the other header elements
+        #       for other tools instead of ttl, protocol, source, and
+        #       destination: http://www.networksorcery.com/enp/protocol/ip.htm
         start = self.dot1q_offset + self.ethernet_header_length
         end = self.dot1q_offset + self.ethernet_header_length + self.ip_header_length
         ip_header = unpack("!BBHHHBBH4s4s", self.packet[start:end])
@@ -215,7 +216,7 @@ class Packet():
             address - MAC address bytes.
 
         Returns:
-            Human readable MAC address (00:11:22:33:44:55)
+            Human-readable MAC address (str). Ex: '00:11:22:33:44:55'
         """
         result = ""
         if len(address) != 6:
