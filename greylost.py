@@ -484,50 +484,32 @@ def startup_blurb():
     """startup_blurb() - show settings and other junk"""
     if not Settings.get("verbose"):
         return
-    print("       interface: %s" % Settings.get("interface"))
-    print("             bpf: %s" % Settings.get("bpf"))
-    print("     filter size: %s" % Settings.get("filter_size"))
-    print("     filter time: %s" % Settings.get("filter_time"))
-    print("filter precision: %s" % Settings.get("filter_precision"))
-    print("   learning time: %s" % Settings.get("filter_learning_time"))
-    print("         logging: %s" % Settings.get("logging"))
+    print("            interface: %s" % Settings.get("interface"))
+    print("                  bpf: %s" % Settings.get("bpf"))
+    print("          filter size: %s" % Settings.get("filter_size"))
+    print("          filter time: %s" % Settings.get("filter_time"))
+    print("     filter precision: %s" % Settings.get("filter_precision"))
+    print("        learning time: %s" % Settings.get("filter_learning_time"))
+    print("              logging: %s" % Settings.get("logging"))
     if Settings.get("logging"):
-        print("        miss log: %s" % Settings.get("greylist_miss_log"))
-        print("         all log: %s" % Settings.get("all_log"))
+        print("             miss log: %s" % Settings.get("greylist_miss_log"))
+        print("              all log: %s" % Settings.get("all_log"))
     if Settings.get("pcap_dumpfile"):
-        print("   pcap dumpfile: %s" % Settings.get("pcap_dumpfile"))
+        print("        pcap dumpfile: %s" % Settings.get("pcap_dumpfile"))
     if Settings.get("greylist_ignore_domains_file"):
-        print("     ignore list: %s" % Settings.get("greylist_ignore_domains_file"))
+        print("          ignore list: %s" % Settings.get("greylist_ignore_domains_file"))
 
-    count = 0
-    methods = len(Settings.get("packet_methods"))
-    if Settings.get("packet_methods"):
-        sys.stdout.write("  packet methods: ")
-        for method in Settings.get("packet_methods"):
+    method_types = ["packet_methods", "greylist_miss_methods", "not_dns_methods"]
+    for method_type in method_types:
+        if not Settings.get(method_type):
+            continue
+        count = 0
+        sys.stdout.write(method_type.replace("_", " ").rjust(21) + ": ")
+        for method in Settings.get(method_type):
             count += 1
             print(method)
-            if count < methods:
-                sys.stdout.write("                  ")
-
-    count = 0
-    methods = len(Settings.get("greylist_miss_methods"))
-    if Settings.get("greylist_miss_methods"):
-        sys.stdout.write("    miss methods: ")
-        for method in Settings.get("greylist_miss_methods"):
-            count += 1
-            print(method)
-            if count < methods:
-                sys.stdout.write("                  ")
-
-    count = 0
-    methods = len(Settings.get("not_dns_methods"))
-    if Settings.get("not_dns_methods"):
-        sys.stdout.write(" not dns methods: ")
-        for method in Settings.get("not_dns_methods"):
-            count += 1
-            print(method)
-            if count < methods:
-                sys.stdout.write("                  ")
+            if count < len(Settings.get(method_type)):
+                sys.stdout.write("".rjust(23))
 
 
 def write_pid_file(path):
