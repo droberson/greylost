@@ -70,15 +70,19 @@ Closing this, should be done via Splunk or ELK
   CLOSED: [2019-12-13 Fri 21:17]
 Since we don't need this precision, look into storing integers to save
 space in RAM and on disk when its pickled.
+* DONE pid file watchdog script for crontab
+  CLOSED: [2019-12-13 Fri 22:40]
 * DONE handle out of memory issues gracefully
   CLOSED: [2019-12-13 Fri 22:31]
 Currently if there's not enough RAM, it throws a memory error and
 crashes. Catch these exceptions and be able to calculate how much RAM
 a filter at a given size will require.
-* DONE pid file watchdog script for crontab
-  CLOSED: [2019-12-13 Fri 22:40]
+* DONE cleanup: are _functions necessary?
+  CLOSED: [2019-12-14 Sat 07:56]
 * TODO use syslog when daemonized; service starts, stops, signal received, ...
+* TODO config file
 * TODO systemd and init scripts to start as a service
+* TODO rotate pcap files?
 * TODO Alerting for resolutions of known-bad domains
 
 http.kali.org
@@ -99,10 +103,7 @@ This will be another project, but has other potential use cases:
 example HTTP API:
 /add?filter=name_here&element=element_goes_here
 /lookup?filter=name_here&element=element_goes_here
-
-* TODO config file
 * TODO add malicious domains to blocklist when using w/ dnsmasq
-* TODO cleanup: are _functions necessary?
 * TODO detect dns protocol abuses
 - weird TXT/NULL records
 - reallylongsubdomaintosqueezeineverypossiblebyte.whatever.com
@@ -110,7 +111,6 @@ example HTTP API:
 - volume
 - +not dns at all.. they are just sending data over port 53+
 * TODO setup.py
-* TODO rotate pcap files?
 * TODO log to socket
 Splunk and ELK can receive input from a TCP or UDP socket. Add an
 option to ship logs in this manner. This may be useful when operating
