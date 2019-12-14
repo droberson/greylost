@@ -600,6 +600,14 @@ def save_timefilter_state():
             exit(os.EX_USAGE)
 
 
+def memory_free():
+    # TODO: error check. not portable!!!
+    with open("/proc/meminfo") as meminfo:
+        for line in meminfo:
+            if line.startswith("MemFree:"):
+                return int(line.split()[1]) * 1024
+
+
 class Settings():
     """ Settings - Application settings object. """
     # TODO document what settings do.
@@ -672,6 +680,7 @@ def main(): # pylint: disable=R0912
     """ main() - Entry point. """
     parse_cli()
 
+    # Fork into the background, if desired.
     if Settings.get("daemonize"):
         try:
             pid = os.fork()
@@ -680,6 +689,8 @@ def main(): # pylint: disable=R0912
         except OSError as exc:
             print("fork(): %s" % exc, file=sys.stderr)
             sys.exit(1)
+
+    # Write PID file
     write_pid_file(Settings.get("pid_file_path"))
 
     # Signal and atexit handlers
@@ -691,9 +702,18 @@ def main(): # pylint: disable=R0912
     #      i think this will cause problems if invoked again with different
     #      values while using a filter file, but have not tested yet.
     Settings.set("starttime", time())
-    Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
-                                          Settings.get("filter_precision"),
-                                          Settings.get("filter_time")))
+    try:
+        Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
+                                              Settings.get("filter_precision"),
+                                              Settings.get("filter_time")))
+    except MemoryError:
+        timefilter = TimeFilter(1, 0.1, 1) # Dummy filter for ideal_size()
+        print("[-] Out of memory. Filter requires %d bytes. %d available." % \
+              (timefilter.ideal_size(Settings.get("filter_size"),
+                                     Settings.get("filter_precision")),
+               memory_free()))
+        exit(os.EX_USAGE)
+
     # Restore TimeFilter's saved state from disk
     if Settings.get("filter_file"):
         filter_file_exists = False
@@ -717,6 +737,8 @@ def main(): # pylint: disable=R0912
     capture = Sniffer(Settings.get("interface"), bpf=Settings.get("bpf"))
     capture.start()
     capture.setnonblock()
+
+    # Open pcap logfile if desired
     if Settings.get("pcap_dumpfile"):
         result = capture.dump_open(Settings.get("pcap_dumpfile"))
         if not result[0]:
@@ -732,8 +754,7 @@ def main(): # pylint: disable=R0912
             exit(os.EX_USAGE)
 
         if packet is None:
-            # sleep() avoids 100% CPU use. Probably a better way to do this??
-            sleep(0.05)
+            sleep(0.05) # Avoid 100% CPU
             continue
 
         output = _parse_dns_packet(packet)
