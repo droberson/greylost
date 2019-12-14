@@ -21,8 +21,8 @@ from pysniffer import Sniffer
 from record_types import DNS_RECORD_TYPES
 
 
-def _parse_dns_response(response_list):
-    """ _parse_dns_response() - Parses DNS responses.
+def parse_dns_response(response_list):
+    """ parse_dns_response() - Parses DNS responses.
 
     Args:
         response_list (list) - Response list
@@ -48,8 +48,8 @@ def _parse_dns_response(response_list):
     return sorted(response_sorted_list, key=lambda k: k["rdata"])
 
 
-def _parse_dns_packet(packet):
-    """ _parse_dns_packet() - Converts DNS packet to a dict.
+def parse_dns_packet(packet):
+    """ parse_dns_packet() - Converts DNS packet to a dict.
 
     Args:
         packet (Packet object) - The packet to parse.
@@ -87,20 +87,20 @@ def _parse_dns_packet(packet):
                                         "qclass": question.qclass})
 
     if dns_packet.rr:
-        output["rr"] = _parse_dns_response(dns_packet.rr)
+        output["rr"] = parse_dns_response(dns_packet.rr)
     if dns_packet.auth:
-        output["auth"] = _parse_dns_response(dns_packet.auth)
+        output["auth"] = parse_dns_response(dns_packet.auth)
     if dns_packet.ar:
-        output["ar"] = _parse_dns_response(dns_packet.ar)
+        output["ar"] = parse_dns_response(dns_packet.ar)
 
     return output
 
 
-def _stdout_packet_json(packet_dict):
-    """ _stdout_packet_json() - Prints DNS packet in JSON format to stdout.
+def stdout_packet_json(packet_dict):
+    """ stdout_packet_json() - Prints DNS packet in JSON format to stdout.
 
     Args:
-        packet_dict (dict) - dict derived from _parse_dns_packet()
+        packet_dict (dict) - dict derived from parse_dns_packet()
 
     Returns:
         True
@@ -109,8 +109,8 @@ def _stdout_packet_json(packet_dict):
     return True
 
 
-def _stdout_greylist_miss(packet_dict):
-    """ _stdout_greylist_miss() - Prints greylist misses to stdout.
+def stdout_greylist_miss(packet_dict):
+    """ stdout_greylist_miss() - Prints greylist misses to stdout.
 
     Args:
         packet_dict (dict) - dict containing information about the packet.
@@ -122,7 +122,7 @@ def _stdout_greylist_miss(packet_dict):
     return True
 
 
-def _check_greylist_ignore_list(packet_dict):
+def check_greylist_ignore_list(packet_dict):
     try:
         for question in packet_dict["questions"]:
             for ignore in Settings.get("greylist_ignore_domains"):
@@ -151,7 +151,7 @@ def _check_greylist_ignore_list(packet_dict):
     # return False
 
 
-def _timefilter_packet(packet_dict):
+def timefilter_packet(packet_dict):
     # Replies are sorted rather than logged in the order in which
     # they were received because they aren't guaranteed to be in
     # the same order if queried more than once. Due to this
@@ -161,7 +161,7 @@ def _timefilter_packet(packet_dict):
     # reducing the required size of the filter.
 
     # Check if domain is in ignore list.
-    if _check_greylist_ignore_list(packet_dict):
+    if check_greylist_ignore_list(packet_dict):
         return False
 
     timefilter = Settings.get("timefilter")
@@ -193,11 +193,11 @@ def _timefilter_packet(packet_dict):
     return True
 
 
-def _all_log(packet_dict):
-    """_all_log() - log a DNS packet
+def all_log(packet_dict):
+    """all_log() - log a DNS packet
 
     Args:
-        packet_dict (dict) - dict derived from _parse_dns_packet()
+        packet_dict (dict) - dict derived from parse_dns_packet()
 
     Returns:
         True if successful, False if unsuccessful
@@ -215,7 +215,7 @@ def _greylist_miss_log(packet_dict):
     """_greylist_miss_log() - log a greylist miss
 
     Args:
-        packet_dict (dict) - dict derived from _parse_dns_packet()
+        packet_dict (dict) - dict derived from parse_dns_packet()
 
     Returns:
         True if successful, False if unsuccessful
@@ -228,11 +228,11 @@ def _greylist_miss_log(packet_dict):
     return False
 
 
-def _not_dns_log(packet_dict):
-    """_not_dns_log() - log non-DNS protocol traffic
+def not_dns_log(packet_dict):
+    """not_dns_log() - log non-DNS protocol traffic
 
     Args:
-        packet_dict (dict) - dict derived from _parse_dns_packet()
+        packet_dict (dict) - dict derived from parse_dns_packet()
 
     Returns:
         True if successful, False if unsuccessful
@@ -405,21 +405,21 @@ def parse_cli(): # pylint: disable=R0915,R0912
 
     if args.stdout:
         packet_methods = Settings.get("packet_methods")
-        if _stdout_packet_json not in packet_methods:
-            packet_methods.append(_stdout_packet_json)
+        if stdout_packet_json not in packet_methods:
+            packet_methods.append(stdout_packet_json)
             Settings.set("packet_methods", packet_methods)
 
         greylist_miss_methods = Settings.get("greylist_miss_methods")
-        if _stdout_greylist_miss not in greylist_miss_methods:
-            greylist_miss_methods.append(_stdout_greylist_miss)
+        if stdout_greylist_miss not in greylist_miss_methods:
+            greylist_miss_methods.append(stdout_greylist_miss)
             Settings.set("greylist_miss_methods", greylist_miss_methods)
 
     if args.logging:
         Settings.set("logging", not Settings.get("logging"))
 
         packet_methods = Settings.get("packet_methods")
-        if _all_log not in packet_methods:
-            packet_methods.append(_all_log)
+        if all_log not in packet_methods:
+            packet_methods.append(all_log)
             Settings.set("packet_methods", packet_methods)
 
         greylist_miss_methods = Settings.get("greylist_miss_methods")
@@ -626,8 +626,8 @@ class Settings():
         "filter_precision": 0.001,
         "filter_time": 60*60*24, # 1 day
         "filter_learning_time": 0, # set to zero if you dont want to learn
-        "packet_methods": [_timefilter_packet],
-        "not_dns_methods": [_not_dns_log],
+        "packet_methods": [timefilter_packet],
+        "not_dns_methods": [not_dns_log],
         "greylist_miss_methods": [],
         "greylist_ignore_domains": set(),
         "greylist_ignore_domains_file": None,
@@ -782,7 +782,7 @@ def main(): # pylint: disable=R0912
             sleep(0.05) # Avoid 100% CPU
             continue
 
-        output = _parse_dns_packet(packet)
+        output = parse_dns_packet(packet)
 
         # Do stuff to non-DNS packets
         try:
