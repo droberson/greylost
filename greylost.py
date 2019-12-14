@@ -391,7 +391,7 @@ def parse_cli(): # pylint: disable=R0915,R0912
         Settings.toggle("logging_all")
     if args.toggle_not_dns_log:
         Settings.toggle("logging_not_dns")
-    if args.toggle_greylost_miss_log:
+    if args.toggle_greylist_miss_log:
         Settings.toggle("logging_greylist_miss")
 
     if args.filterfile:
@@ -490,23 +490,6 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
     # TODO rotate pcaps?
 
 
-def open_log_file(path):
-    """open_log_file() - open a log file and store its fd in Settings()
-
-    Args:
-        path (str) - Path to log file
-
-    Returns:
-        fd on success, None on failure
-    """
-    try:
-        log_fd = open(path, "a")
-    except PermissionError:
-        return None
-    log_fd.flush()
-    return log_fd
-
-
 def startup_blurb():
     """startup_blurb() - show settings and other junk"""
     if not Settings.get("verbose"):
@@ -554,6 +537,23 @@ def write_pid_file(path):
     except PermissionError:
         return False
     return True
+
+
+def open_log_file(path):
+    """open_log_file() - Open a log file for writing.
+
+    Args:
+        path (str) - Path to log file
+
+    Returns:
+        fd on success, None on failure
+    """
+    try:
+        log_fd = open(path, "a")
+    except PermissionError:
+        return None
+    log_fd.flush()
+    return log_fd
 
 
 def open_log_files():
@@ -751,7 +751,11 @@ def main(): # pylint: disable=R0912
             #      relying on CLI/config to be correct.
             Settings.set("timefilter", pickle.loads(timefilter))
 
+    # Display startup settings (debugging)
     startup_blurb()
+
+    # Set up logging
+    # TODO syslog
     open_log_files()
 
     # Start sniffer
