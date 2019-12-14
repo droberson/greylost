@@ -238,6 +238,8 @@ def timefilter_packet(packet_dict):
         return False
 
     element = json.dumps(element_dict)
+
+    # Are we still baselining DNS traffic?
     elapsed = time() - Settings.get("starttime")
     learning = not elapsed > Settings.get("filter_learning_time")
 
@@ -705,37 +707,36 @@ def memory_free():
 
 class Settings():
     """ Settings - Application settings object. """
-    # TODO document what settings do.
     __config = {
-        "starttime": None,
-        "logging": False,
-        "logging_all": True,
-        "logging_greylist_miss": True,
-        "logging_not_dns": True,
-        "daemonize": False,
-        "timefilter": None,
-        "interface": None,
-        "bpf": None,
-        "filter_file": None,
-        "filter_size": None,
-        "filter_precision": 0.001,
-        "filter_time": 60*60*24, # 1 day
-        "filter_learning_time": 0, # set to zero if you dont want to learn
-        "packet_methods": [timefilter_packet],
-        "not_dns_methods": [not_dns_log],
-        "greylist_miss_methods": [],
-        "greylist_ignore_domains": set(),
-        "greylist_ignore_domains_file": None,
-        "not_dns_log": "greylost-notdns.log",
-        "not_dns_log_fd": None,
-        "greylist_miss_log": "greylost-misses.log",
-        "greylist_miss_log_fd": None,
-        "all_log": "greylost-all.log",
-        "all_log_fd": None,
-        "verbose": False,
-        "pid_file_path": "greylost.pid",
-        "pcap_dumpfile": None,
-        "syslog": True,
+        "starttime": None,                          # Program start time
+        "logging": False,                           # Toggle logging
+        "logging_all": True,                        # Toggle all log
+        "logging_greylist_miss": True,              # Toggle logging misses
+        "logging_not_dns": True,                    # Toggle logging non-DNS
+        "daemonize": False,                         # Toggle daemonization
+        "timefilter": None,                         # TimeFilter object
+        "interface": None,                          # Interface to sniff
+        "bpf": None,                                # libpcap bpf filter
+        "filter_file": None,                        # Path to filter state file
+        "filter_size": None,                        # Size of filter
+        "filter_precision": 0.001,                  # Filter accuracy
+        "filter_time": 60*60*24,                    # Shelf life for elements
+        "filter_learning_time": 0,                  # Baseline for N seconds
+        "packet_methods": [timefilter_packet],      # Run these on all packets
+        "not_dns_methods": [not_dns_log],           # Run these against non-DNS
+        "greylist_miss_methods": [],                # Run these against misses
+        "greylist_ignore_domains": set(),           # Set of domains to ignore
+        "greylist_ignore_domains_file": None,       # Greylist ignore list
+        "not_dns_log": "greylost-notdns.log",       # Path to not DNS logfile
+        "not_dns_log_fd": None,                     # Not DNS file descriptor
+        "greylist_miss_log": "greylost-misses.log", # Path to miss logfile
+        "greylist_miss_log_fd": None,               # Miss log file descriptor
+        "all_log": "greylost-all.log",              # Path to all logfile
+        "all_log_fd": None,                         # All log file descriptor
+        "verbose": False,                           # Verbose
+        "pid_file_path": "greylost.pid",            # Path to PID file
+        "pcap_dumpfile": None,                      # Path to pcap logfile
+        "syslog": True,                             # Toggle syslog
     }
 
     @staticmethod
