@@ -388,11 +388,11 @@ def parse_cli(): # pylint: disable=R0915,R0912
     Settings.set("pcap_dumpfile", args.dumpfile)
 
     if args.toggle_all_log:
-        Settings.set("logging_all", not Settings.get("logging_all"))
+        Settings.toggle("logging_all")
     if args.toggle_not_dns_log:
-        Settings.set("logging_not_dns", not Settings.get("logging_not_dns"))
-    if args.toggle_greylist_miss_log:
-        Settings.set("logging_greylist_miss", not Settings.get("logging_greylist_miss"))
+        Settings.toggle("logging_not_dns")
+    if args.toggle_greylost_miss_log:
+        Settings.toggle("logging_greylist_miss")
 
     if args.filterfile:
         try:
@@ -668,12 +668,33 @@ class Settings():
             value         - Value to apply to setting.
 
         Returns:
-            True on success. Raises NameError if setting doesnt exist.
+            True on success. Raises NameError if setting doesn't exist.
         """
         if name in [x for x in Settings.__config]:
             Settings.__config[name] = value
             return True
         raise NameError("Not a valid setting for set():", name)
+
+
+    @staticmethod
+    def toggle(name):
+        """ Settings.toggle() - Toggle a setting: True->False, False->True.
+
+        Args:
+            name (string) - Name of setting to toggle.
+
+        Returns:
+            Value of setting after it has been toggled on success.
+            Raises NameError if setting doesn't exist.
+            Raises TypeError if setting isn't a bool.
+        """
+        try:
+            if isinstance(Settings.__config[name], bool):
+                Settings.__config[name] = not Settings.__config[name]
+                return Settings.__config[name]
+            raise TypeError("Setting %s is not a boolean." % name)
+        except KeyError:
+            raise NameError("Not a valid setting for toggle():", name)
 
 
 def main(): # pylint: disable=R0912
