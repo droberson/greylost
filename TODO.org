@@ -66,11 +66,12 @@ queries.
   CLOSED: [2019-12-13 Fri 09:09]
 For really important events, send a webhook alert.
 Closing this, should be done via Splunk or ELK
-* TODO systemd and init scripts to start as a service
-* TODO pid file watchdog script for crontab
-* TODO TimeFilter stores decimal currently. Look into storing as int instead.
+* DONE TimeFilter stores decimal currently. Look into storing as int instead.
+  CLOSED: [2019-12-13 Fri 21:17]
 Since we don't need this precision, look into storing integers to save
 space in RAM and on disk when its pickled.
+* TODO systemd and init scripts to start as a service
+* TODO pid file watchdog script for crontab
 * TODO Alerting for resolutions of known-bad domains
 
 http.kali.org
