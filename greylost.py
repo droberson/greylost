@@ -22,6 +22,48 @@ from pysniffer import Sniffer
 from record_types import DNS_RECORD_TYPES
 
 
+def error_fatal(msg, exit_value=os.EX_USAGE):
+    """ error_fatal() - Log an error and exit.
+
+    Args:
+        msg (str)  - Error message.
+        exit_value - Value to pass to exit()
+
+    Returns:
+        Nothing.
+    """
+    error(msg)
+    exit(exit_value)
+
+
+def error(msg):
+    """ error() - Log an error.
+
+    Args:
+        msg (str) - Error message.
+
+    Returns:
+        Nothing.
+    """
+    if not Settings.get("daemonize"):
+        print("[-] %s" % msg, file=sys.stderr)
+    syslog.syslog(msg)
+
+
+def log(msg):
+    """ log() - Log a message.
+
+    Args:
+        msg (str) - Message.
+
+    Returns:
+        Nothing
+    """
+    if not Settings.get("daemonize"):
+        print("[+] %s" % msg)
+    syslog.syslog(msg)
+
+
 def parse_dns_response(response_list):
     """ parse_dns_response() - Parses DNS responses.
 
@@ -360,6 +402,11 @@ def parse_cli(): # pylint: disable=R0915,R0912
         help="Size of bloom filter")
 
     parser.add_argument(
+        "--syslog",
+        action="store_true",
+        help="Toggle syslog logging")
+
+    parser.add_argument(
         "-t",
         "--filtertime",
         default=60*60*24,
@@ -406,6 +453,8 @@ def parse_cli(): # pylint: disable=R0915,R0912
     Settings.set("daemonize", args.daemonize)
     Settings.set("pcap_dumpfile", args.dumpfile)
 
+    if args.syslog:
+        Settings.toggle("syslog")
     if args.toggle_all_log:
         Settings.toggle("logging_all")
     if args.toggle_not_dns_log:
@@ -418,8 +467,8 @@ def parse_cli(): # pylint: disable=R0915,R0912
             with open(args.filterfile, "ab"):
                 pass
         except PermissionError as exc:
-            print("[-] Unable to open filter %s: %s" % (args.filterfile, exc))
-            exit(os.EX_OSFILE)
+            error_fatal("Unable to open filter %s: %s" % (args.filterfile, exc),
+                        exit_value=os.EX_OSFILE)
         Settings.set("filter_file", args.filterfile)
 
     if args.stdout:
@@ -434,17 +483,17 @@ def parse_cli(): # pylint: disable=R0915,R0912
             Settings.set("greylist_miss_methods", greylist_miss_methods)
 
     if args.logging:
-        Settings.set("logging", not Settings.get("logging"))
+        Settings.toggle("logging")
+        if Settings.get("logging"):
+            packet_methods = Settings.get("packet_methods")
+            if all_log not in packet_methods:
+                packet_methods.append(all_log)
+                Settings.set("packet_methods", packet_methods)
 
-        packet_methods = Settings.get("packet_methods")
-        if all_log not in packet_methods:
-            packet_methods.append(all_log)
-            Settings.set("packet_methods", packet_methods)
-
-        greylist_miss_methods = Settings.get("greylist_miss_methods")
-        if _greylist_miss_log not in greylist_miss_methods:
-            greylist_miss_methods.append(_greylist_miss_log)
-            Settings.set("greylist_miss_methods", greylist_miss_methods)
+            greylist_miss_methods = Settings.get("greylist_miss_methods")
+            if _greylist_miss_log not in greylist_miss_methods:
+                greylist_miss_methods.append(_greylist_miss_log)
+                Settings.set("greylist_miss_methods", greylist_miss_methods)
 
     if args.pidfile:
         Settings.set("pid_file_path", args.pidfile)
@@ -478,8 +527,8 @@ def populate_greylist_ignore_list(ignore_file):
                     continue
                 ignore_list.add(line.rstrip())
     except FileNotFoundError as exc:
-        print("[-] Unable to open ignore list %s: %s" % (ignore_file, exc))
-        exit(os.EX_OSFILE)
+        error_fatal("Unable to open ignore list %s: %s" % (ignore_file, exc),
+                    exit_value=os.EX_OSFILE)
     Settings.set("greylist_ignore_domains", ignore_list)
 
 
@@ -493,8 +542,8 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
     Returns:
         Nothing
     """
-    # TODO log caught signals to syslog
-    print("[+] Caught HUP signal. Reloading logs.")
+    log("Caught HUP signal.")
+    log("Reloading log files.")
     if Settings.get("logging"):
         log_fds = ["all_log_fd", "greylist_miss_log_fd", "not_dns_log_fd"]
         for log_fd in log_fds:
@@ -505,6 +554,7 @@ def sig_hup_handler(signo, frame): # pylint: disable=W0613
             Settings.set(log_fd, new_fd)
 
     if Settings.get("greylist_ignore_domains_file"):
+        log("Reloading greylist ignore list")
         populate_greylist_ignore_list(Settings.get("greylist_ignore_domains_file"))
     # TODO rotate pcaps?
 
@@ -585,19 +635,19 @@ def open_log_files():
         if all_log_fd:
             Settings.set("all_log_fd", all_log_fd)
         else:
-            print("something went wrong opening all_log")
+            error("Something went wrong opening all_log")
     if Settings.get("greylist_miss_log") and Settings.get("logging_greylist_miss"):
         greylist_miss_fd = open_log_file(Settings.get("greylist_miss_log"))
         if greylist_miss_fd:
             Settings.set("greylist_miss_log_fd", greylist_miss_fd)
         else:
-            print("something went wrong opening greylist_miss_log")
+            error("Something went wrong opening greylist_miss_log")
     if Settings.get("not_dns_log") and Settings.get("logging_not_dns"):
         not_dns_fd = open_log_file(Settings.get("not_dns_log"))
         if not_dns_fd:
             Settings.set("not_dns_log_fd", not_dns_fd)
         else:
-            print("something went wrong with not_dns_log")
+            error("Something went wrong with not_dns_log")
 
 
 def save_timefilter_state():
@@ -610,6 +660,7 @@ def save_timefilter_state():
         Nothing.
     """
     if Settings.get("filter_file"):
+        log("Saving TimeFilter state to %s" % Settings.get("filter_file"))
         try:
             with open(Settings.get("filter_file"), "wb") as filterfile:
                 try:
@@ -617,9 +668,21 @@ def save_timefilter_state():
                 except KeyboardInterrupt: # Don't let user ^C and jack up filter
                     pass
         except PermissionError as exc:
-            print("[-] Unable to open filter %s: %s" % \
-                  (Settings.get("filter_file"), exc))
-            exit(os.EX_OSFILE)
+            error_fatal("Unable to open filter %s: %s" % \
+                        (Settings.get("filter_file"), exc),
+                        os.EX_OSFILE)
+
+
+def cleanup():
+    """ cleanup() - Function to run at exit.
+
+    Args:
+        None.
+
+    Returns:
+        Nothing.
+    """
+    log("Exiting.")
 
 
 def memory_free():
@@ -672,6 +735,7 @@ class Settings():
         "verbose": False,
         "pid_file_path": "greylost.pid",
         "pcap_dumpfile": None,
+        "syslog": True,
     }
 
     @staticmethod
@@ -733,6 +797,11 @@ def main(): # pylint: disable=R0912,R0915
     """ main() - Entry point. """
     parse_cli()
 
+    # Set up logging
+    syslog.openlog(ident="greylost", logoption=syslog.LOG_PID)
+    open_log_files()
+    syslog.syslog("Started")
+
     # Fork into the background, if desired.
     if Settings.get("daemonize"):
         try:
@@ -740,8 +809,7 @@ def main(): # pylint: disable=R0912,R0915
             if pid > 0:
                 exit(os.EX_OK)
         except OSError as exc:
-            print("[-] fork(): %s" % exc, file=sys.stderr)
-            exit(os.EX_OSERR)
+            error_fatal("fork(): %s" % exc, exit_value=os.EX_OSERR)
 
     # Write PID file
     write_pid_file(Settings.get("pid_file_path"))
@@ -749,6 +817,7 @@ def main(): # pylint: disable=R0912,R0915
     # Signal and atexit handlers
     signal.signal(signal.SIGHUP, sig_hup_handler)
     atexit.register(save_timefilter_state)
+    atexit.register(cleanup)
 
     # Create timefilter
     # TODO save other metadata to disk; start time, filter attributes, etc.
@@ -761,11 +830,11 @@ def main(): # pylint: disable=R0912,R0915
                                               Settings.get("filter_time")))
     except MemoryError:
         timefilter = TimeFilter(1, 0.1, 1) # Dummy filter for ideal_size()
-        print("[-] Out of memory. Filter requires %d bytes. %d available." % \
-              (timefilter.ideal_size(Settings.get("filter_size"),
-                                     Settings.get("filter_precision")),
-               memory_free()))
-        exit(os.EX_SOFTWARE)
+        error_fatal("Out of memory. Filter requires %d bytes. %d available." % \
+                    (timefilter.ideal_size(Settings.get("filter_size"),
+                                           Settings.get("filter_precision")),
+                     memory_free()),
+                    exit_value=os.EX_SOFTWARE)
 
     # Restore TimeFilter's saved state from disk
     if Settings.get("filter_file"):
@@ -775,44 +844,42 @@ def main(): # pylint: disable=R0912,R0915
         except FileNotFoundError:
             pass
         if bool(timefilter):
-            # TODO make sure pickle succeeds and validate its contents
             # TODO other filter settings? currently not saving these and
             #      relying on CLI/config to be correct.
             try:
                 Settings.set("timefilter", pickle.loads(timefilter))
-            except Exception as exc:
-                print("[-] Failed to unpickle time filter %s: %s" % \
-                      (Settings.get("filter_file"), exc))
-                exit(os.EX_SOFTWARE)
+            except Exception as exc: # pylint: disable=W0703
+                error_fatal("Failed to unpickle time filter %s: %s" % \
+                            (Settings.get("filter_file"), exc),
+                            exit_value=os.EX_SOFTWARE)
             del timefilter
 
     # Display startup settings (debugging)
     startup_blurb()
 
-    # Set up logging
-    syslog.openlog(ident="greylost", logoption=syslog.LOG_PID)
-    syslog.syslog("Started.")
-    open_log_files()
-
     # Start sniffer
     capture = Sniffer(Settings.get("interface"), bpf=Settings.get("bpf"))
-    capture.start()
+    result = capture.start()
+    if not result[0]:
+        error_fatal("Unable to open interface %s for sniffing: %s" % \
+                    (Settings.get("interface"), result[1]),
+                    exit_value=os.EX_NOINPUT)
     capture.setnonblock()
 
     # Open pcap logfile if desired
     if Settings.get("pcap_dumpfile"):
         result = capture.dump_open(Settings.get("pcap_dumpfile"))
         if not result[0]:
-            print("[-] Unable to open %s for writing: %s" % \
-                  (Settings.get("pcap_dumpfile"), result[1]))
-            exit(os.EX_OSFILE)
+            error_fatal("Unable to open %s for writing: %s" % \
+                       (Settings.get("pcap_dumpfile"), result[1]),
+                        exit_value=os.EX_OSFILE)
 
     while True:
         packet = capture.next()
         if packet is False:
-            print("[-] Interface %s went down. Exiting." % \
-                  Settings.get("interface"))
-            exit(os.EX_UNAVAILABLE)
+            error_fatal("Interface %s went down. Exiting." % \
+                        Settings.get("interface"),
+                        exit_value=os.EX_UNAVAILABLE)
 
         if packet is None:
             sleep(0.05) # Avoid 100% CPU
