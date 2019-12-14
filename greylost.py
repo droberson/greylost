@@ -10,6 +10,7 @@ import argparse
 import signal
 import pickle
 import atexit
+import syslog
 from base64 import b64encode
 from time import sleep, time
 from datetime import datetime
@@ -123,6 +124,19 @@ def stdout_greylist_miss(packet_dict):
 
 
 def check_greylist_ignore_list(packet_dict):
+    """ check_greylist_ignore_list() - Check the greylist ignore list prior to
+                                       adding to the greylist; this benign and
+                                       trusted services such as Netflix that
+                                       have a ton of IP addresses and subdomains
+                                       from wasting space in the filter.
+
+    Args:
+        packet_dict (dict) - dict derived from parse_dns_packet()
+
+    Returns:
+        True if query should be ignored.
+        False if query should be added to the greylist.
+    """
     try:
         for question in packet_dict["questions"]:
             for ignore in Settings.get("greylist_ignore_domains"):
@@ -152,13 +166,18 @@ def check_greylist_ignore_list(packet_dict):
 
 
 def timefilter_packet(packet_dict):
-    # Replies are sorted rather than logged in the order in which
-    # they were received because they aren't guaranteed to be in
-    # the same order if queried more than once. Due to this
-    # randomness, one query may end up occupying dozens of
-    # elements.  Sorting will avoid duplicate elements in the
-    # bloom filter when they are logically the same, thus,
-    # reducing the required size of the filter.
+    """ timefilter_packet() - Add a packet to the greylist. This sorts and omits
+                              volatile data such as port numbers, timestamps,
+                              and the order of responses to prevent duplicate
+                              elements from being added to the filter.
+
+    Args:
+        packet_dict (dict) - dict derived from parse_dns_packet()
+
+    Returns:
+        True if element was successfully added to the filter.
+        False if element was not added to the filter.
+    """
 
     # Check if domain is in ignore list.
     if check_greylist_ignore_list(packet_dict):
@@ -400,7 +419,7 @@ def parse_cli(): # pylint: disable=R0915,R0912
                 pass
         except PermissionError as exc:
             print("[-] Unable to open filter %s: %s" % (args.filterfile, exc))
-            exit(os.EX_USAGE)
+            exit(os.EX_OSFILE)
         Settings.set("filter_file", args.filterfile)
 
     if args.stdout:
@@ -449,7 +468,7 @@ def populate_greylist_ignore_list(ignore_file):
         ignore_file (str) - path to file
 
     Returns:
-        Nothing on success. Exits with os.EX_USAGE if the file doesn't exist
+        Nothing on success. Exits with os.EX_OSFILE if the file doesn't exist
     """
     ignore_list = set()
     try:
@@ -460,7 +479,7 @@ def populate_greylist_ignore_list(ignore_file):
                 ignore_list.add(line.rstrip())
     except FileNotFoundError as exc:
         print("[-] Unable to open ignore list %s: %s" % (ignore_file, exc))
-        exit(os.EX_USAGE)
+        exit(os.EX_OSFILE)
     Settings.set("greylist_ignore_domains", ignore_list)
 
 
@@ -593,19 +612,32 @@ def save_timefilter_state():
     if Settings.get("filter_file"):
         try:
             with open(Settings.get("filter_file"), "wb") as filterfile:
-                pickle.dump(Settings.get("timefilter"), filterfile)
+                try:
+                    pickle.dump(Settings.get("timefilter"), filterfile)
+                except KeyboardInterrupt: # Don't let user ^C and jack up filter
+                    pass
         except PermissionError as exc:
             print("[-] Unable to open filter %s: %s" % \
                   (Settings.get("filter_file"), exc))
-            exit(os.EX_USAGE)
+            exit(os.EX_OSFILE)
 
 
 def memory_free():
+    """ memory_free() - Determine free memory on Linux hosts.
+
+    Args:
+        None.
+
+    Returns:
+        Free memory in bytes (int) on success.
+        None on failure
+    """
     # TODO: error check. not portable!!!
     with open("/proc/meminfo") as meminfo:
         for line in meminfo:
             if line.startswith("MemFree:"):
                 return int(line.split()[1]) * 1024
+    return None
 
 
 class Settings():
@@ -697,7 +729,7 @@ class Settings():
             raise NameError("Not a valid setting for toggle():", name)
 
 
-def main(): # pylint: disable=R0912
+def main(): # pylint: disable=R0912,R0915
     """ main() - Entry point. """
     parse_cli()
 
@@ -706,10 +738,10 @@ def main(): # pylint: disable=R0912
         try:
             pid = os.fork()
             if pid > 0:
-                sys.exit(0)
+                exit(os.EX_OK)
         except OSError as exc:
-            print("fork(): %s" % exc, file=sys.stderr)
-            sys.exit(1)
+            print("[-] fork(): %s" % exc, file=sys.stderr)
+            exit(os.EX_OSERR)
 
     # Write PID file
     write_pid_file(Settings.get("pid_file_path"))
@@ -733,29 +765,33 @@ def main(): # pylint: disable=R0912
               (timefilter.ideal_size(Settings.get("filter_size"),
                                      Settings.get("filter_precision")),
                memory_free()))
-        exit(os.EX_USAGE)
+        exit(os.EX_SOFTWARE)
 
     # Restore TimeFilter's saved state from disk
     if Settings.get("filter_file"):
-        filter_file_exists = False
         try:
             with open(Settings.get("filter_file"), "rb") as filterfile:
                 timefilter = filterfile.read()
-                if len(timefilter) != 0:
-                    filter_file_exists = True
         except FileNotFoundError:
             pass
-        if filter_file_exists:
+        if bool(timefilter):
             # TODO make sure pickle succeeds and validate its contents
             # TODO other filter settings? currently not saving these and
             #      relying on CLI/config to be correct.
-            Settings.set("timefilter", pickle.loads(timefilter))
+            try:
+                Settings.set("timefilter", pickle.loads(timefilter))
+            except Exception as exc:
+                print("[-] Failed to unpickle time filter %s: %s" % \
+                      (Settings.get("filter_file"), exc))
+                exit(os.EX_SOFTWARE)
+            del timefilter
 
     # Display startup settings (debugging)
     startup_blurb()
 
     # Set up logging
-    # TODO syslog
+    syslog.openlog(ident="greylost", logoption=syslog.LOG_PID)
+    syslog.syslog("Started.")
     open_log_files()
 
     # Start sniffer
@@ -769,14 +805,14 @@ def main(): # pylint: disable=R0912
         if not result[0]:
             print("[-] Unable to open %s for writing: %s" % \
                   (Settings.get("pcap_dumpfile"), result[1]))
-            exit(os.EX_USAGE)
+            exit(os.EX_OSFILE)
 
     while True:
         packet = capture.next()
         if packet is False:
             print("[-] Interface %s went down. Exiting." % \
                   Settings.get("interface"))
-            exit(os.EX_USAGE)
+            exit(os.EX_UNAVAILABLE)
 
         if packet is None:
             sleep(0.05) # Avoid 100% CPU
