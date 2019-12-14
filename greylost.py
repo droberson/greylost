@@ -397,7 +397,7 @@ def parse_cli(): # pylint: disable=R0915,R0912
 
     if args.filterfile:
         try:
-            with open(args.filterfile, "wb"):
+            with open(args.filterfile, "ab"):
                 pass
         except PermissionError as exc:
             print("[-] Unable to open filter %s: %s" % (args.filterfile, exc))
@@ -701,7 +701,8 @@ def main(): # pylint: disable=R0912
         try:
             with open(Settings.get("filter_file"), "rb") as filterfile:
                 timefilter = filterfile.read()
-            filter_file_exists = True
+                if len(timefilter) != 0:
+                    filter_file_exists = True
         except FileNotFoundError:
             pass
         if filter_file_exists:
