@@ -52,9 +52,9 @@ class Sniffer(): # pylint: disable=R0902
             None.
 
         Returns:
-            Packet object of the next packet on success
+            Packet object of the next packet on success.
             None if no packet exists (non-blocking).
-            False on error
+            False on error.
         """
         try:
             header, packet = self.sniffer.next()
