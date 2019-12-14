@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-""" greylost - DNS threat hunting
-"""
+""" greylost - DNS threat hunting. """
 
 import os
 import sys
