@@ -79,7 +79,8 @@ crashes. Catch these exceptions and be able to calculate how much RAM
 a filter at a given size will require.
 * DONE cleanup: are _functions necessary?
   CLOSED: [2019-12-14 Sat 07:56]
-* TODO use syslog when daemonized; service starts, stops, signal received, ...
+* DONE use syslog when daemonized; service starts, stops, signal received, ...
+  CLOSED: [2019-12-14 Sat 11:49]
 * TODO config file
 * TODO systemd and init scripts to start as a service
 * TODO rotate pcap files?
