@@ -37,13 +37,18 @@ class Sniffer(): # pylint: disable=R0902
             None.
 
         Returns:
-            Nothing.
+            tuple: (True/False, None/exception message).
         """
-        self.sniffer = pcapy.open_live(self.interface,
-                                       self.snaplen,
-                                       self.promisc,
-                                       self.timeout)
+        try:
+            self.sniffer = pcapy.open_live(self.interface,
+                                           self.snaplen,
+                                           self.promisc,
+                                           self.timeout)
+        except pcapy.PcapError as exc:
+            return (False, exc)
+
         self.sniffer.setfilter(self.bpf)
+        return (True, None)
 
     def next(self):
         """ Sniffer.next() - Get next packet from sniffer.
@@ -90,7 +95,7 @@ class Sniffer(): # pylint: disable=R0902
             path (str) - path to dumpfile.
 
         Returns:
-            tuple: (True/False, None/descriptive failure message)
+            tuple: (True/False, None/exception message)
         """
         self.dumpfile = path
         try:
