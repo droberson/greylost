@@ -11,6 +11,7 @@ import signal
 import pickle
 import atexit
 import syslog
+import statistics
 from base64 import b64encode
 from time import sleep, time
 from datetime import datetime
@@ -21,6 +22,19 @@ from dmfrbloom.timefilter import TimeFilter
 from pysniffer import Sniffer
 from record_types import DNS_RECORD_TYPES
 
+
+class RollingLog():
+    def __init__(self, size):
+        self.size = size
+        self.log = [None for _ in range(size)]
+
+    def add(self, data):
+        self.log += [data]
+        if len(self.log) > self.size:
+            self.log = self.log[-1 * self.size:]
+
+    def clear(self):
+        self.log = []
 
 def error_fatal(msg, exit_value=os.EX_USAGE):
     """ error_fatal() - Log an error and exit.
@@ -205,6 +219,60 @@ def check_greylist_ignore_list(packet_dict):
     #     except KeyError:
     #         pass
     # return False
+
+
+def average_packet(packet):
+    current = Settings.get("average_current")
+    if packet:
+        try:
+            current[packet.saddr + " " + packet.daddr] += 1
+        except KeyError:
+            current[packet.saddr + " " + packet.daddr] = 1
+        Settings.set("average_current", current)
+
+    history = Settings.get("average_history")
+    if (time() - Settings.get("average_last")) > 10:
+        for key in current:
+            if key in history.keys():
+                history[key].add(current[key])
+            else:
+                history[key] = RollingLog(60 * 10) # 60 * 10
+                history[key].add(current[key])
+
+        # Reap expired host pairs
+        current_keys = set(current.keys())
+        new_history = history
+        for key in history.copy():
+            if key not in current_keys:
+                new_history[key].add(0)
+            if set(history[key].log) == {0}:
+                new_history.pop(key)
+        del history
+
+        # Detect spikes in volume of traffic. This currently does not work
+        # correctly. It detects spikes in traffic, but takes several minutes
+        # or hours to correct itself.
+
+        # TODO if current minute is N% higher than average?
+        # TODO calculate median absolute deviation?
+        for x in new_history:
+            z = [i for i in new_history[x].log if i != None]
+            if len(z[:-1]) > 1:
+                print(x)
+                mean = statistics.mean(z[:-1])
+                stddev = statistics.stdev(z[:-1])
+                print("    ",
+                      "SPIKE" if stddev > mean else "",
+                      max(z),
+                      mean,
+                      new_history[x].log[-1],
+                      stddev)
+                #if stddev > mean:
+                #    print("SPIKE", x)
+
+        Settings.set("average_history", new_history)
+        Settings.set("average_current", {})
+        Settings.set("average_last", time())
 
 
 def timefilter_packet(packet_dict):
@@ -404,6 +472,11 @@ def parse_cli(): # pylint: disable=R0915,R0912
         help="Size of bloom filter")
 
     parser.add_argument(
+        "--statistics",
+        action="store_true",
+        help="Toggle statistics collection")
+
+    parser.add_argument(
         "--syslog",
         action="store_true",
         help="Toggle syslog logging")
@@ -463,6 +536,8 @@ def parse_cli(): # pylint: disable=R0915,R0912
         Settings.toggle("logging_not_dns")
     if args.toggle_greylist_miss_log:
         Settings.toggle("logging_greylist_miss")
+    if args.statistics:
+        Settings.toggle("statistics")
 
     if args.filterfile:
         try:
@@ -708,6 +783,10 @@ def memory_free():
 class Settings():
     """ Settings - Application settings object. """
     __config = {
+        "average_last": None,
+        "average_current": {},
+        "average_history": {},
+        "statistics", False,
         "starttime": None,                          # Program start time
         "logging": False,                           # Toggle logging
         "logging_all": True,                        # Toggle all log
@@ -820,11 +899,14 @@ def main(): # pylint: disable=R0912,R0915
     atexit.register(save_timefilter_state)
     atexit.register(cleanup)
 
+    # Used for scheduling...
+    Settings.set("starttime", time())
+    Settings.set("average_last", time())
+
     # Create timefilter
     # TODO save other metadata to disk; start time, filter attributes, etc.
     #      i think this will cause problems if invoked again with different
     #      values while using a filter file, but have not tested yet.
-    Settings.set("starttime", time())
     try:
         Settings.set("timefilter", TimeFilter(Settings.get("filter_size"),
                                               Settings.get("filter_precision"),
@@ -881,6 +963,10 @@ def main(): # pylint: disable=R0912,R0915
             error_fatal("Interface %s went down. Exiting." % \
                         Settings.get("interface"),
                         exit_value=os.EX_UNAVAILABLE)
+
+        # Detect spikes in DNS traffic
+        if Settings.get("statistics"):
+            average_packet(packet)
 
         if packet is None:
             sleep(0.05) # Avoid 100% CPU
