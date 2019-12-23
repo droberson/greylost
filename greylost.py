@@ -786,7 +786,7 @@ class Settings():
         "average_last": None,
         "average_current": {},
         "average_history": {},
-        "statistics", False,
+        "statistics": False,
         "starttime": None,                          # Program start time
         "logging": False,                           # Toggle logging
         "logging_all": True,                        # Toggle all log
@@ -968,6 +968,7 @@ def main(): # pylint: disable=R0912,R0915
         if Settings.get("statistics"):
             average_packet(packet)
 
+        # No packet is available, sleep and try again.
         if packet is None:
             sleep(0.05) # Avoid 100% CPU
             continue
